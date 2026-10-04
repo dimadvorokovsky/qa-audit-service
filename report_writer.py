@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-def get_overall_status(main_result, broken_links):
+def get_overall_status(main_result, broken_links, ui_result):
     if not main_result["is_available"]:
         return "FAIL"
 
@@ -12,10 +12,16 @@ def get_overall_status(main_result, broken_links):
     if main_result["performance_status"] == "FAIL":
         return "WARN"
 
+    if ui_result["ui_status"] == "ERROR":
+        return "WARN"
+
+    if not ui_result["title_exists"]:
+        return "WARN"
+
     return "PASS"
 
 
-def save_report(url, main_result, links, forms):
+def save_report(url, main_result, links, forms, ui_result):
     reports_dir = Path("reports")
     reports_dir.mkdir(exist_ok=True)
 
@@ -29,7 +35,8 @@ def save_report(url, main_result, links, forms):
 
     overall_status = get_overall_status(
         main_result,
-        broken_links
+        broken_links,
+        ui_result
     )
 
     with open(file_path, "w", encoding="utf-8") as file:
@@ -141,6 +148,24 @@ def save_report(url, main_result, links, forms):
                     )
 
                 file.write("\n")
+
+        file.write("## UI-проверка через Selenium\n\n")
+        file.write(
+            f"- UI status: {ui_result['ui_status']}\n"
+        )
+        file.write(
+            f"- Title: {ui_result['title']}\n"
+        )
+        file.write(
+            f"- Title exists: {ui_result['title_exists']}\n"
+        )
+
+        if "error" in ui_result:
+            file.write(
+                f"- Error: {ui_result['error']}\n"
+            )
+
+        file.write("\n")
 
         file.write("## Краткое заключение\n\n")
 

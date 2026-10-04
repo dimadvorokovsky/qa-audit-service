@@ -1,6 +1,7 @@
 from checks.http_checks import check_url
 from checks.link_checks import check_page_links
 from checks.forms_checks import get_forms
+from checks.ui_checks import check_page_title
 from report_writer import save_report
 
 
@@ -67,11 +68,22 @@ def main():
                     f"required={field['required']}"
                 )
 
+    print("\nUI-проверка через Selenium:")
+    ui_result = check_page_title(url)
+
+    print(f"UI status: {ui_result['ui_status']}")
+    print(f"Title: {ui_result['title']}")
+    print(f"Title exists: {ui_result['title_exists']}")
+
+    if "error" in ui_result:
+        print(f"UI error: {ui_result['error']}")
+
     report_path = save_report(
         url=url,
         main_result=result,
         links=links,
-        forms=forms
+        forms=forms,
+        ui_result=ui_result
     )
 
     print("\nОтчёт сохранён:")
