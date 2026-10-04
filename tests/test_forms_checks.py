@@ -1,41 +1,49 @@
+import pytest
+
 from checks.forms_checks import get_forms
 
 
+@pytest.mark.integration
 def test_get_forms_returns_list():
-    forms = get_forms("https://www.python.org")
+    result = get_forms("https://www.python.org")
 
-    assert isinstance(forms, list)
+    assert isinstance(result, list)
 
 
+@pytest.mark.integration
 def test_python_org_has_at_least_one_form():
-    forms = get_forms("https://www.python.org")
+    result = get_forms("https://www.python.org")
 
-    assert len(forms) >= 1
+    assert len(result) >= 1
 
 
+@pytest.mark.integration
 def test_form_contains_required_keys():
-    forms = get_forms("https://www.python.org")
-    form = forms[0]
+    result = get_forms("https://www.python.org")
 
-    assert "form_number" in form
-    assert "action" in form
-    assert "method" in form
-    assert "fields" in form
-    assert "submit_buttons" in form
+    first_form = result[0]
 
-
-def test_python_org_search_form_uses_get_method():
-    forms = get_forms("https://www.python.org")
-    form = forms[0]
-
-    assert form["method"] == "GET"
+    assert "form_number" in first_form
+    assert "action" in first_form
+    assert "method" in first_form
+    assert "fields" in first_form
+    assert "submit_buttons" in first_form
 
 
-def test_python_org_search_form_has_search_field():
-    forms = get_forms("https://www.python.org")
-    form = forms[0]
+@pytest.mark.integration
+def test_python_org_first_form_uses_get_method():
+    result = get_forms("https://www.python.org")
+
+    assert result[0]["method"] == "GET"
+
+
+@pytest.mark.integration
+def test_python_org_form_contains_search_field():
+    result = get_forms("https://www.python.org")
+
+    fields = result[0]["fields"]
 
     assert any(
         field["type"] == "search"
-        for field in form["fields"]
+        for field in fields
     )

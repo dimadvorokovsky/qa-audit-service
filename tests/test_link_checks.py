@@ -1,3 +1,5 @@
+import pytest
+
 from checks.link_checks import (
     check_link,
     check_page_links,
@@ -6,6 +8,7 @@ from checks.link_checks import (
 )
 
 
+@pytest.mark.integration
 def test_get_internal_links_returns_only_internal_links():
     links = get_internal_links("https://www.python.org")
 
@@ -15,6 +18,7 @@ def test_get_internal_links_returns_only_internal_links():
     )
 
 
+@pytest.mark.integration
 def test_check_link_returns_200_for_example():
     result = check_link("https://example.com")
 
@@ -22,6 +26,7 @@ def test_check_link_returns_200_for_example():
     assert result["is_broken"] is False
 
 
+@pytest.mark.integration
 def test_invalid_domain_is_marked_as_broken():
     result = check_link(
         "https://this-domain-does-not-exist-123456789.com"
@@ -30,6 +35,7 @@ def test_invalid_domain_is_marked_as_broken():
     assert result["is_broken"] is True
 
 
+@pytest.mark.integration
 def test_check_page_links_returns_max_20_links():
     results = check_page_links("https://www.python.org")
 
