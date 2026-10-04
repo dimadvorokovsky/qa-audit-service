@@ -21,6 +21,9 @@ def get_overall_status(main_result, broken_links, ui_result):
     if not ui_result["h1_exists"]:
         return "WARN"
 
+    if ui_result["images_without_alt_count"] > 0:
+        return "WARN"
+
     return "PASS"
 
 
@@ -187,8 +190,34 @@ def save_report(url, main_result, links, forms, ui_result):
         )
 
         file.write(
-            f"- Buttons count: {ui_result['buttons_count']}\n"
+            f"- Buttons count: {ui_result['buttons_count']}\n\n"
         )
+
+        file.write("## Проверка изображений\n\n")
+
+        file.write(
+            f"- Images count: {ui_result['images_count']}\n"
+        )
+
+        file.write(
+            f"- Images with alt: "
+            f"{ui_result['images_with_alt_count']}\n"
+        )
+
+        file.write(
+            f"- Images without alt: "
+            f"{ui_result['images_without_alt_count']}\n"
+        )
+
+        if ui_result["images_without_alt"]:
+            file.write("\n### Изображения без alt\n\n")
+
+            for image_src in ui_result["images_without_alt"]:
+                file.write(
+                    f"- {image_src}\n"
+                )
+
+        file.write("\n")
 
         if "error" in ui_result:
             file.write(

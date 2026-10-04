@@ -52,6 +52,30 @@ def get_interactive_elements_data(driver):
     }
 
 
+def get_images_data(driver):
+    images = driver.find_elements(By.TAG_NAME, "img")
+
+    images_without_alt = []
+
+    for image in images:
+        alt = image.get_attribute("alt")
+        src = image.get_attribute("src")
+
+        if alt is None or not alt.strip():
+            images_without_alt.append(src)
+
+    images_count = len(images)
+    images_without_alt_count = len(images_without_alt)
+    images_with_alt_count = images_count - images_without_alt_count
+
+    return {
+        "images_count": images_count,
+        "images_with_alt_count": images_with_alt_count,
+        "images_without_alt_count": images_without_alt_count,
+        "images_without_alt": images_without_alt
+    }
+
+
 def check_page_title(url):
     driver = None
 
@@ -84,6 +108,10 @@ def check_page_title(url):
                 "buttons_count": 0,
                 "links_exist": False,
                 "buttons_exist": False,
+                "images_count": 0,
+                "images_with_alt_count": 0,
+                "images_without_alt_count": 0,
+                "images_without_alt": [],
                 "ui_status": "ERROR",
                 "error": "Page load timeout",
                 "screenshot": screenshot_path
@@ -92,10 +120,14 @@ def check_page_title(url):
         title = driver.title.strip()
         h1_data = get_h1_data(driver)
         interactive_data = get_interactive_elements_data(driver)
+        images_data = get_images_data(driver)
 
         ui_status = "PASS"
 
         if not title or not h1_data["h1_exists"]:
+            ui_status = "WARN"
+
+        if images_data["images_without_alt_count"] > 0:
             ui_status = "WARN"
 
         return {
@@ -108,6 +140,10 @@ def check_page_title(url):
             "buttons_count": interactive_data["buttons_count"],
             "links_exist": interactive_data["links_exist"],
             "buttons_exist": interactive_data["buttons_exist"],
+            "images_count": images_data["images_count"],
+            "images_with_alt_count": images_data["images_with_alt_count"],
+            "images_without_alt_count": images_data["images_without_alt_count"],
+            "images_without_alt": images_data["images_without_alt"],
             "ui_status": ui_status,
             "screenshot": None
         }
@@ -131,6 +167,10 @@ def check_page_title(url):
             "buttons_count": 0,
             "links_exist": False,
             "buttons_exist": False,
+            "images_count": 0,
+            "images_with_alt_count": 0,
+            "images_without_alt_count": 0,
+            "images_without_alt": [],
             "ui_status": "ERROR",
             "error": str(error),
             "screenshot": screenshot_path
@@ -155,6 +195,10 @@ def check_page_title(url):
             "buttons_count": 0,
             "links_exist": False,
             "buttons_exist": False,
+            "images_count": 0,
+            "images_with_alt_count": 0,
+            "images_without_alt_count": 0,
+            "images_without_alt": [],
             "ui_status": "ERROR",
             "error": str(error),
             "screenshot": screenshot_path

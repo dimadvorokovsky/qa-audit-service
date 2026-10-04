@@ -81,6 +81,23 @@ def main():
     print(f"Buttons exist: {ui_result['buttons_exist']}")
     print(f"Buttons count: {ui_result['buttons_count']}")
 
+    print("\nПроверка изображений:")
+    print(f"Images count: {ui_result['images_count']}")
+    print(
+        f"Images with alt: "
+        f"{ui_result['images_with_alt_count']}"
+    )
+    print(
+        f"Images without alt: "
+        f"{ui_result['images_without_alt_count']}"
+    )
+
+    if ui_result["images_without_alt"]:
+        print("Изображения без alt:")
+
+        for image_src in ui_result["images_without_alt"]:
+            print(f"- {image_src}")
+
     if "error" in ui_result:
         print(f"UI error: {ui_result['error']}")
 

@@ -7,7 +7,8 @@ def build_data_url(
     title="Python Test",
     h1="Python QA Audit",
     include_link=True,
-    include_button=True
+    include_button=True,
+    images=None
 ):
     body = f"<h1>{h1}</h1>"
 
@@ -16,6 +17,16 @@ def build_data_url(
 
     if include_button:
         body += "<button>Submit</button>"
+
+    if images:
+        for image in images:
+            src = image.get("src", "")
+            alt = image.get("alt")
+
+            if alt is None:
+                body += f'<img src="{src}">'
+            else:
+                body += f'<img src="{src}" alt="{alt}">'
 
     html = (
         "<html>"
@@ -130,3 +141,102 @@ def test_missing_button_returns_false():
     result = check_page_title(url)
 
     assert result["buttons_exist"] is False
+
+
+def test_images_count():
+    url = build_data_url(
+        images=[
+            {
+                "src": "https://example.com/image1.jpg",
+                "alt": "Image one"
+            },
+            {
+                "src": "https://example.com/image2.jpg",
+                "alt": "Image two"
+            }
+        ]
+    )
+
+    result = check_page_title(url)
+
+    assert result["images_count"] == 2
+
+
+def test_images_with_alt_count():
+    url = build_data_url(
+        images=[
+            {
+                "src": "https://example.com/image1.jpg",
+                "alt": "Image one"
+            },
+            {
+                "src": "https://example.com/image2.jpg",
+                "alt": "Image two"
+            }
+        ]
+    )
+
+    result = check_page_title(url)
+
+    assert result["images_with_alt_count"] == 2
+
+
+def test_image_without_alt_detected():
+    url = build_data_url(
+        images=[
+            {
+                "src": "https://example.com/image1.jpg",
+                "alt": "Image one"
+            },
+            {
+                "src": "https://example.com/image2.jpg"
+            }
+        ]
+    )
+
+    result = check_page_title(url)
+
+    assert result["images_without_alt_count"] == 1
+
+
+def test_image_without_alt_is_added_to_problem_list():
+    url = build_data_url(
+        images=[
+            {
+                "src": "https://example.com/image1.jpg"
+            }
+        ]
+    )
+
+    result = check_page_title(url)
+
+    assert len(result["images_without_alt"]) == 1
+
+
+def test_image_without_alt_returns_warn():
+    url = build_data_url(
+        images=[
+            {
+                "src": "https://example.com/image1.jpg"
+            }
+        ]
+    )
+
+    result = check_page_title(url)
+
+    assert result["ui_status"] == "WARN"
+
+
+def test_all_images_with_alt_keep_pass_status():
+    url = build_data_url(
+        images=[
+            {
+                "src": "https://example.com/image1.jpg",
+                "alt": "Image one"
+            }
+        ]
+    )
+
+    result = check_page_title(url)
+
+    assert result["ui_status"] == "PASS"
