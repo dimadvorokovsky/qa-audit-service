@@ -1,7 +1,8 @@
 from checks.link_checks import (
-    get_internal_links,
     check_link,
     check_page_links,
+    get_internal_links,
+    normalize_url
 )
 
 
@@ -14,22 +15,62 @@ def test_get_internal_links_returns_only_internal_links():
     )
 
 
-def test_check_link_returns_200_for_available_link():
+def test_check_link_returns_200_for_example():
     result = check_link("https://example.com")
 
     assert result["status_code"] == 200
     assert result["is_broken"] is False
 
 
-def test_check_link_marks_invalid_link_as_broken():
+def test_invalid_domain_is_marked_as_broken():
     result = check_link(
-        "https://this-site-does-not-exist-123456789.com"
+        "https://this-domain-does-not-exist-123456789.com"
     )
 
     assert result["is_broken"] is True
 
 
-def test_check_page_links_checks_no_more_than_20_links():
+def test_check_page_links_returns_max_20_links():
     results = check_page_links("https://www.python.org")
 
     assert len(results) <= 20
+
+
+def test_normalize_root_url_removes_trailing_slash():
+    result = normalize_url("https://www.python.org/")
+
+    assert result == "https://www.python.org"
+
+
+def test_normalize_path_removes_trailing_slash():
+    result = normalize_url(
+        "https://www.python.org/about/"
+    )
+
+    assert result == "https://www.python.org/about"
+
+
+def test_normalize_domain_converts_to_lowercase():
+    result = normalize_url(
+        "HTTPS://WWW.PYTHON.ORG/about/"
+    )
+
+    assert result == "https://www.python.org/about"
+
+
+def test_normalize_url_removes_fragment():
+    result = normalize_url(
+        "https://www.python.org/about/#history"
+    )
+
+    assert result == "https://www.python.org/about"
+
+
+def test_normalize_url_keeps_query_parameters():
+    result = normalize_url(
+        "https://www.python.org/search/?q=selenium"
+    )
+
+    assert result == (
+        "https://www.python.org/search?q=selenium"
+    )
