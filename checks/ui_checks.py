@@ -3,9 +3,9 @@ from pathlib import Path
 
 from selenium import webdriver
 from selenium.common.exceptions import (
+    NoSuchElementException,
     TimeoutException,
-    WebDriverException,
-    NoSuchElementException
+    WebDriverException
 )
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -26,11 +26,10 @@ def save_screenshot(driver):
 def get_h1_data(driver):
     try:
         h1 = driver.find_element(By.TAG_NAME, "h1")
-        h1_text = h1.text.strip()
 
         return {
             "h1_exists": True,
-            "h1_text": h1_text
+            "h1_text": h1.text.strip()
         }
 
     except NoSuchElementException:
@@ -76,17 +75,49 @@ def get_images_data(driver):
     }
 
 
-def check_page_title(url):
-    driver = None
+def create_firefox_driver():
+    options = Options()
+    options.add_argument("-headless")
+    options.page_load_strategy = "eager"
+
+    driver = webdriver.Firefox(options=options)
+    driver.set_page_load_timeout(30)
+
+    return driver
+
+
+def get_error_result(
+    url,
+    error_message,
+    screenshot_path=None
+):
+    return {
+        "url": url,
+        "title": "",
+        "title_exists": False,
+        "h1_exists": False,
+        "h1_text": "",
+        "links_count": 0,
+        "buttons_count": 0,
+        "links_exist": False,
+        "buttons_exist": False,
+        "images_count": 0,
+        "images_with_alt_count": 0,
+        "images_without_alt_count": 0,
+        "images_without_alt": [],
+        "ui_status": "ERROR",
+        "error": error_message,
+        "screenshot": screenshot_path
+    }
+
+
+def check_page_title(url, driver=None):
+    own_driver = driver is None
+
+    if own_driver:
+        driver = create_firefox_driver()
 
     try:
-        options = Options()
-        options.add_argument("-headless")
-        options.page_load_strategy = "eager"
-
-        driver = webdriver.Firefox(options=options)
-        driver.set_page_load_timeout(30)
-
         try:
             driver.get(url)
 
@@ -98,24 +129,11 @@ def check_page_title(url):
             except Exception:
                 pass
 
-            return {
-                "url": url,
-                "title": "",
-                "title_exists": False,
-                "h1_exists": False,
-                "h1_text": "",
-                "links_count": 0,
-                "buttons_count": 0,
-                "links_exist": False,
-                "buttons_exist": False,
-                "images_count": 0,
-                "images_with_alt_count": 0,
-                "images_without_alt_count": 0,
-                "images_without_alt": [],
-                "ui_status": "ERROR",
-                "error": "Page load timeout",
-                "screenshot": screenshot_path
-            }
+            return get_error_result(
+                url=url,
+                error_message="Page load timeout",
+                screenshot_path=screenshot_path
+            )
 
         title = driver.title.strip()
         h1_data = get_h1_data(driver)
@@ -142,7 +160,9 @@ def check_page_title(url):
             "buttons_exist": interactive_data["buttons_exist"],
             "images_count": images_data["images_count"],
             "images_with_alt_count": images_data["images_with_alt_count"],
-            "images_without_alt_count": images_data["images_without_alt_count"],
+            "images_without_alt_count": images_data[
+                "images_without_alt_count"
+            ],
             "images_without_alt": images_data["images_without_alt"],
             "ui_status": ui_status,
             "screenshot": None
@@ -151,61 +171,33 @@ def check_page_title(url):
     except WebDriverException as error:
         screenshot_path = None
 
-        if driver is not None:
-            try:
-                screenshot_path = save_screenshot(driver)
-            except Exception:
-                pass
+        try:
+            screenshot_path = save_screenshot(driver)
+        except Exception:
+            pass
 
-        return {
-            "url": url,
-            "title": "",
-            "title_exists": False,
-            "h1_exists": False,
-            "h1_text": "",
-            "links_count": 0,
-            "buttons_count": 0,
-            "links_exist": False,
-            "buttons_exist": False,
-            "images_count": 0,
-            "images_with_alt_count": 0,
-            "images_without_alt_count": 0,
-            "images_without_alt": [],
-            "ui_status": "ERROR",
-            "error": str(error),
-            "screenshot": screenshot_path
-        }
+        return get_error_result(
+            url=url,
+            error_message=str(error),
+            screenshot_path=screenshot_path
+        )
 
     except Exception as error:
         screenshot_path = None
 
-        if driver is not None:
-            try:
-                screenshot_path = save_screenshot(driver)
-            except Exception:
-                pass
+        try:
+            screenshot_path = save_screenshot(driver)
+        except Exception:
+            pass
 
-        return {
-            "url": url,
-            "title": "",
-            "title_exists": False,
-            "h1_exists": False,
-            "h1_text": "",
-            "links_count": 0,
-            "buttons_count": 0,
-            "links_exist": False,
-            "buttons_exist": False,
-            "images_count": 0,
-            "images_with_alt_count": 0,
-            "images_without_alt_count": 0,
-            "images_without_alt": [],
-            "ui_status": "ERROR",
-            "error": str(error),
-            "screenshot": screenshot_path
-        }
+        return get_error_result(
+            url=url,
+            error_message=str(error),
+            screenshot_path=screenshot_path
+        )
 
     finally:
-        if driver is not None:
+        if own_driver:
             try:
                 driver.quit()
             except Exception:

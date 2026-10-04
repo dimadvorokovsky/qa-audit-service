@@ -41,39 +41,39 @@ def build_data_url(
     return "data:text/html;charset=utf-8," + quote(html)
 
 
-def test_page_title_exists():
+def test_page_title_exists(browser):
     url = build_data_url()
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["title_exists"] is True
 
 
-def test_page_title_contains_python():
+def test_page_title_contains_python(browser):
     url = build_data_url()
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert "Python" in result["title"]
 
 
-def test_h1_exists():
+def test_h1_exists(browser):
     url = build_data_url()
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["h1_exists"] is True
 
 
-def test_h1_text():
+def test_h1_text(browser):
     url = build_data_url(h1="Главный заголовок")
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["h1_text"] == "Главный заголовок"
 
 
-def test_missing_h1_returns_warn():
+def test_missing_h1_returns_warn(browser):
     html = (
         "<html>"
         "<head>"
@@ -90,60 +90,60 @@ def test_missing_h1_returns_warn():
 
     url = "data:text/html;charset=utf-8," + quote(html)
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["ui_status"] == "WARN"
 
 
-def test_links_exist():
+def test_links_exist(browser):
     url = build_data_url()
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["links_exist"] is True
 
 
-def test_links_count():
+def test_links_count(browser):
     url = build_data_url()
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["links_count"] == 1
 
 
-def test_buttons_exist():
+def test_buttons_exist(browser):
     url = build_data_url()
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["buttons_exist"] is True
 
 
-def test_buttons_count():
+def test_buttons_count(browser):
     url = build_data_url()
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["buttons_count"] == 1
 
 
-def test_missing_link_returns_false():
+def test_missing_link_returns_false(browser):
     url = build_data_url(include_link=False)
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["links_exist"] is False
 
 
-def test_missing_button_returns_false():
+def test_missing_button_returns_false(browser):
     url = build_data_url(include_button=False)
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["buttons_exist"] is False
 
 
-def test_images_count():
+def test_images_count(browser):
     url = build_data_url(
         images=[
             {
@@ -157,12 +157,12 @@ def test_images_count():
         ]
     )
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["images_count"] == 2
 
 
-def test_images_with_alt_count():
+def test_images_with_alt_count(browser):
     url = build_data_url(
         images=[
             {
@@ -176,12 +176,12 @@ def test_images_with_alt_count():
         ]
     )
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["images_with_alt_count"] == 2
 
 
-def test_image_without_alt_detected():
+def test_image_without_alt_detected(browser):
     url = build_data_url(
         images=[
             {
@@ -194,12 +194,12 @@ def test_image_without_alt_detected():
         ]
     )
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["images_without_alt_count"] == 1
 
 
-def test_image_without_alt_is_added_to_problem_list():
+def test_image_without_alt_is_added_to_problem_list(browser):
     url = build_data_url(
         images=[
             {
@@ -208,12 +208,12 @@ def test_image_without_alt_is_added_to_problem_list():
         ]
     )
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert len(result["images_without_alt"]) == 1
 
 
-def test_image_without_alt_returns_warn():
+def test_image_without_alt_returns_warn(browser):
     url = build_data_url(
         images=[
             {
@@ -222,12 +222,12 @@ def test_image_without_alt_returns_warn():
         ]
     )
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["ui_status"] == "WARN"
 
 
-def test_all_images_with_alt_keep_pass_status():
+def test_all_images_with_alt_keep_pass_status(browser):
     url = build_data_url(
         images=[
             {
@@ -237,6 +237,6 @@ def test_all_images_with_alt_keep_pass_status():
         ]
     )
 
-    result = check_page_title(url)
+    result = check_page_title(url, driver=browser)
 
     assert result["ui_status"] == "PASS"
