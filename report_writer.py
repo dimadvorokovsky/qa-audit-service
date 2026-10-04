@@ -165,6 +165,13 @@ def save_report(url, main_result, links, forms, ui_result):
                 f"- Error: {ui_result['error']}\n"
             )
 
+        screenshot_path = ui_result.get("screenshot")
+
+        if screenshot_path:
+            file.write(
+                f"- Screenshot: {screenshot_path}\n"
+            )
+
         file.write("\n")
 
         file.write("## Краткое заключение\n\n")

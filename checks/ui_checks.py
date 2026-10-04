@@ -1,6 +1,21 @@
+from datetime import datetime
+from pathlib import Path
+
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.firefox.options import Options
+
+
+def save_screenshot(driver):
+    screenshots_dir = Path("screenshots")
+    screenshots_dir.mkdir(exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = screenshots_dir / f"ui_error_{timestamp}.png"
+
+    driver.save_screenshot(str(screenshot_path))
+
+    return str(screenshot_path)
 
 
 def check_page_title(url):
@@ -18,12 +33,20 @@ def check_page_title(url):
             driver.get(url)
 
         except TimeoutException:
+            screenshot_path = None
+
+            try:
+                screenshot_path = save_screenshot(driver)
+            except Exception:
+                pass
+
             return {
                 "url": url,
                 "title": "",
                 "title_exists": False,
                 "ui_status": "ERROR",
-                "error": "Page load timeout"
+                "error": "Page load timeout",
+                "screenshot": screenshot_path
             }
 
         title = driver.title.strip()
@@ -32,25 +55,44 @@ def check_page_title(url):
             "url": url,
             "title": title,
             "title_exists": bool(title),
-            "ui_status": "PASS" if title else "WARN"
+            "ui_status": "PASS" if title else "WARN",
+            "screenshot": None
         }
 
     except WebDriverException as error:
+        screenshot_path = None
+
+        if driver is not None:
+            try:
+                screenshot_path = save_screenshot(driver)
+            except Exception:
+                pass
+
         return {
             "url": url,
             "title": "",
             "title_exists": False,
             "ui_status": "ERROR",
-            "error": str(error)
+            "error": str(error),
+            "screenshot": screenshot_path
         }
 
     except Exception as error:
+        screenshot_path = None
+
+        if driver is not None:
+            try:
+                screenshot_path = save_screenshot(driver)
+            except Exception:
+                pass
+
         return {
             "url": url,
             "title": "",
             "title_exists": False,
             "ui_status": "ERROR",
-            "error": str(error)
+            "error": str(error),
+            "screenshot": screenshot_path
         }
 
     finally:
