@@ -1,66 +1,78 @@
 # QA Audit Service
 
-QA Audit Service — учебно-практический сервис для автоматизированного технического аудита веб-сайтов.
+QA Audit Service — сервис для автоматизированного технического аудита веб-сайтов.
 
-Проект создан как портфолио-проект Junior QA Engineer и развивается как полноценный инструмент для базовой проверки сайтов.
+Проект создан как портфолио-проект Junior QA Engineer и развивается как практический инструмент для базовой технической и UI-проверки веб-сайтов.
 
-## Что умеет сервис
+## Возможности
 
-Сейчас сервис выполняет следующие проверки:
+Сервис выполняет:
 
-- доступность сайта;
-- HTTP status code;
-- время ответа сервера;
-- базовую оценку производительности по времени ответа;
-- проверку внутренних ссылок;
+- проверку доступности сайта;
+- получение HTTP status code;
+- измерение времени HTTP-ответа;
+- базовую оценку времени ответа;
+- поиск внутренних ссылок;
+- нормализацию URL;
 - обнаружение битых ссылок;
 - поиск HTML-форм;
 - анализ полей форм;
 - анализ submit-кнопок;
-- UI-проверку через Selenium;
-- проверку наличия title страницы;
+- UI-проверки через Selenium;
+- проверку наличия `title`;
+- проверку наличия `h1`;
+- получение текста `h1`;
+- подсчёт ссылок на странице;
+- подсчёт кнопок;
+- аудит изображений;
+- поиск изображений без `alt`;
+- автоматическое создание screenshot при UI-ошибке;
 - обработку Selenium timeout и WebDriver ошибок;
 - автоматическое формирование Markdown-отчёта.
 
-## Общая логика работы
+## Логика работы
 
 Пользователь вводит URL сайта.
 
-После этого сервис последовательно выполняет:
+Сервис последовательно выполняет:
 
 1. HTTP-проверку.
 2. Проверку внутренних ссылок.
-3. Анализ форм.
-4. UI-проверку через Selenium.
-5. Формирование итогового отчёта.
+3. Анализ HTML-форм.
+4. Selenium UI-аудит.
+5. Проверку изображений.
+6. Формирование итогового Markdown-отчёта.
 
-Если один из UI-модулей завершается ошибкой, например возникает Selenium timeout, весь аудит не завершается аварийно.
+Ошибка отдельного UI-модуля не останавливает весь аудит.
 
-Ошибка фиксируется в результате проверки, а итоговый отчёт всё равно создаётся.
+Например, если Selenium получает `Page load timeout`, сервис:
+
+- сохраняет остальные результаты;
+- выставляет UI status `ERROR`;
+- создаёт screenshot;
+- добавляет путь к screenshot в отчёт;
+- выставляет общий статус `WARN`.
 
 ## Статусы
 
-Для результатов используются статусы:
+Используются четыре основных статуса:
 
-- `PASS` — проверка прошла успешно;
+- `PASS` — проверка завершена успешно;
 - `WARN` — обнаружено предупреждение;
 - `FAIL` — критическая проблема;
 - `ERROR` — техническая ошибка выполнения отдельной проверки.
 
 Пример:
 
-```text
-UI status: ERROR
-Title:
-Title exists: False
-UI error: Page load timeout
-```
-
-При этом общий аудит продолжает работу и формирует отчёт.
+    UI status: ERROR
+    Title:
+    Title exists: False
+    H1 exists: False
+    H1 text:
+    Error: Page load timeout
+    Screenshot: screenshots/ui_error_2026-10-05_00-33-46.png
 
 ## Технологии
-
-Проект использует:
 
 - Python
 - Requests
@@ -73,35 +85,36 @@ UI error: Page load timeout
 
 ## Структура проекта
 
-```text
-qa-audit-service/
-│
-├── checks/
-│   ├── __init__.py
-│   ├── http_checks.py
-│   ├── link_checks.py
-│   ├── forms_checks.py
-│   └── ui_checks.py
-│
-├── tests/
-│   ├── __init__.py
-│   ├── test_http_checks.py
-│   ├── test_link_checks.py
-│   ├── test_forms_checks.py
-│   └── test_ui_checks.py
-│
-├── reports/
-├── screenshots/
-├── audit_report_template.md
-├── bug_report_template.md
-├── checklist.md
-├── config.py
-├── main.py
-├── report_writer.py
-├── requirements.txt
-├── .gitignore
-└── README.md
-```
+    qa-audit-service/
+    │
+    ├── checks/
+    │   ├── __init__.py
+    │   ├── http_checks.py
+    │   ├── link_checks.py
+    │   ├── forms_checks.py
+    │   └── ui_checks.py
+    │
+    ├── tests/
+    │   ├── __init__.py
+    │   ├── conftest.py
+    │   ├── test_http_checks.py
+    │   ├── test_link_checks.py
+    │   ├── test_forms_checks.py
+    │   └── test_ui_checks.py
+    │
+    ├── reports/
+    ├── screenshots/
+    │
+    ├── audit_report_template.md
+    ├── bug_report_template.md
+    ├── checklist.md
+    ├── config.py
+    ├── main.py
+    ├── pytest.ini
+    ├── report_writer.py
+    ├── requirements.txt
+    ├── .gitignore
+    └── README.md
 
 ## HTTP-проверка
 
@@ -109,18 +122,16 @@ qa-audit-service/
 
 - доступность URL;
 - HTTP status code;
-- время ответа;
-- наличие сетевой ошибки.
+- время HTTP-ответа;
+- сетевые ошибки.
 
-Также используется базовая классификация времени ответа:
+Базовая классификация времени ответа:
 
-```text
-< 1 сек      PASS
-1–3 сек      WARN
-> 3 сек      FAIL
-```
+    < 1 сек      PASS
+    1–3 сек      WARN
+    > 3 сек      FAIL
 
-Важно: это время HTTP-ответа, а не полноценный анализ производительности страницы и не Core Web Vitals.
+Важно: это время HTTP-ответа сервера, а не полноценный frontend performance audit и не Core Web Vitals.
 
 ## Проверка ссылок
 
@@ -128,329 +139,371 @@ qa-audit-service/
 
 - получает ссылки со страницы;
 - выбирает внутренние ссылки;
-- удаляет fragment из URL;
+- нормализует URL;
+- удаляет fragment;
+- приводит scheme и domain к нижнему регистру;
+- убирает лишний trailing slash;
+- сохраняет query parameters;
 - проверяет HTTP status code;
 - определяет битые ссылки.
 
-Чтобы аудит не выполнялся слишком долго, за один запуск проверяется ограниченное количество ссылок.
+За один аудит проверяется до:
 
-Текущий лимит:
+    20 ссылок
 
-```text
-20 ссылок
-```
+Нормализация позволяет избежать дублей вида:
+
+    https://www.python.org
+    https://www.python.org/
+
+и:
+
+    https://www.python.org/about
+    https://www.python.org/about/
 
 ## Проверка форм
 
-Модуль `forms_checks.py` анализирует HTML-формы страницы.
+Модуль `forms_checks.py` анализирует HTML-формы.
 
 Для каждой формы определяется:
 
-- номер формы;
+- номер;
 - HTTP method;
 - action;
 - количество полей;
-- тип поля;
-- имя поля;
-- наличие атрибута required;
-- наличие submit-кнопок.
+- tag;
+- type;
+- name;
+- наличие `required`;
+- количество submit-кнопок.
 
 Пример:
 
-```text
-Форма #1
-Method: GET
-Action: https://www.python.org/search/
-Количество полей: 1
-Кнопок submit: 1
-- input | type=search | name=q | required=False
-```
+    Форма #1
+    Method: GET
+    Action: https://www.python.org/search/
+    Количество полей: 1
+    Кнопок submit: 1
+    - input | type=search | name=q | required=False
 
-## UI-проверка через Selenium
+## Selenium UI-аудит
 
-Модуль `ui_checks.py` запускает Firefox через Selenium в headless-режиме.
+Модуль `ui_checks.py` запускает Firefox в headless-режиме.
 
-Сейчас проверяется:
+Проверяются:
 
-- возможность открыть страницу;
-- наличие title;
-- значение title.
+- загрузка страницы;
+- `title`;
+- наличие `title`;
+- наличие `h1`;
+- текст `h1`;
+- наличие ссылок;
+- количество ссылок;
+- наличие кнопок;
+- количество кнопок.
 
 Пример успешного результата:
 
-```text
-UI status: PASS
-Title: Welcome to Python.org
-Title exists: True
-```
+    UI status: PASS
+    Title: QA Test
+    Title exists: True
+    H1 exists: True
+    H1 text: Главный заголовок
+    Links exist: True
+    Links count: 1
+    Buttons exist: True
+    Buttons count: 1
 
-Если страница не загрузилась за установленное время:
+## Проверка изображений
 
-```text
-UI status: ERROR
-Title:
-Title exists: False
-Error: Page load timeout
-```
+Сервис анализирует элементы `<img>`.
 
-При этом остальные результаты аудита не теряются.
+Определяется:
+
+- общее количество изображений;
+- количество изображений с `alt`;
+- количество изображений без `alt`;
+- список `src` проблемных изображений.
+
+Если найдено изображение без `alt`, UI status становится `WARN`.
+
+Пример:
+
+    Images count: 3
+    Images with alt: 2
+    Images without alt: 1
 
 ## Автотесты
 
-Проект содержит автотесты для:
+Проект содержит автоматические тесты для:
 
 - HTTP-проверок;
 - классификации времени ответа;
-- проверки ссылок;
-- определения битых ссылок;
-- анализа форм;
-- UI-проверки через Selenium.
+- внутренних ссылок;
+- нормализации URL;
+- битых ссылок;
+- HTML-форм;
+- Selenium UI-проверок;
+- `title`;
+- `h1`;
+- ссылок;
+- кнопок;
+- изображений;
+- атрибутов `alt`.
 
-UI-тесты используют локальную HTML-страницу через `data:` URL.
+Текущий полный набор:
 
-Это сделано специально, чтобы автотесты не зависели от доступности внешнего сайта и интернет-соединения.
+    37 passed
 
-Запуск всех тестов:
+## Unit и integration tests
 
-```bash
-pytest -v
-```
+Тесты разделены на быстрые локальные проверки и сетевые integration tests.
 
-Запуск только UI-тестов:
+Для integration tests используется marker:
 
-```bash
-pytest tests/test_ui_checks.py -v
-```
+    @pytest.mark.integration
 
-На текущем этапе:
+Маркер зарегистрирован в `pytest.ini`.
 
-```text
-17 passed
-```
+Запуск только быстрых тестов:
 
-## Почему UI-тесты не используют реальный сайт
+    pytest -v -m "not integration"
 
-Ранее UI-тесты запускались на `https://www.python.org`.
+Текущий результат:
 
-Это делало тесты зависимыми от:
+    25 passed, 12 deselected
 
-- интернета;
-- скорости внешнего сайта;
-- браузера;
-- сетевых задержек.
+Запуск только integration tests:
 
-В результате корректный код мог получить ложное падение из-за `Page load timeout`.
+    pytest -v -m integration
 
-Поэтому тестирование собственной логики было отделено от интеграционной проверки реального сайта.
+Текущий результат:
 
-## Запуск проекта
+    12 passed, 25 deselected
 
-Клонировать репозиторий:
+Запуск всего набора:
 
-```bash
-git clone https://github.com/dimadvorokovsky/qa-audit-service.git
-```
+    pytest -v
 
-Перейти в каталог:
+## Оптимизация Selenium tests
 
-```bash
-cd qa-audit-service
-```
+Selenium UI-тесты используют общий browser fixture из `tests/conftest.py`.
 
-Создать виртуальное окружение:
+Firefox запускается один раз на тестовую сессию и переиспользуется между UI-тестами.
 
-```bash
-python -m venv venv
-```
+До оптимизации запуск UI-тестов занимал примерно:
 
-Активировать его в Windows PowerShell:
+    84–98 секунд
 
-```powershell
-.\venv\Scripts\Activate.ps1
-```
+После оптимизации:
 
-Если PowerShell запрещает выполнение скрипта:
+    17 passed in 4.33s
 
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-```
+Полный тестовый прогон после оптимизации:
 
-После этого снова:
+    37 passed in 17.25s
 
-```powershell
-.\venv\Scripts\Activate.ps1
-```
+Это позволяет заметно сократить время локального запуска тестов и будущего CI pipeline.
 
-Установить зависимости:
+## Обработка Selenium ошибок
 
-```bash
-pip install -r requirements.txt
-```
+Если Selenium не может загрузить страницу, сервис не завершает весь аудит аварийно.
 
-Запустить аудит:
+Обрабатываются:
 
-```bash
-python main.py
-```
+- `TimeoutException`;
+- `WebDriverException`;
+- другие непредвиденные ошибки.
 
-После запуска программа запросит URL:
+При timeout возвращается структурированный результат:
 
-```text
-Введите URL сайта:
-```
+    UI status: ERROR
+    Title:
+    Title exists: False
+    H1 exists: False
+    H1 text:
+    Error: Page load timeout
 
-Например:
+## Screenshots
 
-```text
-https://www.python.org
-```
+При UI-ошибке сервис автоматически сохраняет screenshot в каталог:
 
-## Пример результата
+    screenshots/
 
-Пример HTTP-проверки:
+Пример:
 
-```text
-URL: https://www.python.org
-Status code: 200
-Response time: 0.125 sec
-Available: True
-Performance: PASS
-```
+    screenshots/ui_error_2026-10-05_00-33-46.png
 
-Пример проверки ссылок:
+Путь к screenshot добавляется в итоговый audit report.
 
-```text
-Всего ссылок: 20
-Битых ссылок: 0
-```
+## Отчёты
 
-Пример проверки формы:
+После выполнения аудита Markdown-отчёт автоматически сохраняется в:
 
-```text
-Найдено форм: 1
-
-Форма #1
-Method: GET
-Action: https://www.python.org/search/
-Количество полей: 1
-Кнопок submit: 1
-```
-
-Пример UI-проверки при timeout:
-
-```text
-UI status: ERROR
-Title:
-Title exists: False
-UI error: Page load timeout
-```
-
-## Отчёт
-
-После завершения аудита Markdown-отчёт автоматически сохраняется в:
-
-```text
-reports/
-```
+    reports/
 
 Имя файла содержит дату и время запуска:
 
-```text
-audit_2026-10-04_23-40-07.md
-```
+    audit_2026-10-05_00-33-47.md
 
-Пример содержимого:
+В отчёт входят:
 
-```text
-# QA Audit Report
+- URL;
+- дата проверки;
+- общий статус;
+- HTTP status code;
+- response time;
+- результат проверки доступности;
+- результат проверки внутренних ссылок;
+- найденные битые ссылки;
+- данные HTML-форм;
+- Selenium UI results;
+- `title`;
+- `h1`;
+- количество ссылок;
+- количество кнопок;
+- аудит изображений;
+- список изображений без `alt`;
+- информация об ошибках Selenium;
+- путь к screenshot;
+- краткое заключение.
 
-## Общая информация
+## Пример запуска
 
-- URL: https://www.python.org
-- Общий статус: WARN
+Запуск проекта:
 
-## Основная проверка
+    python main.py
 
-- Status code: 200
-- Response time: 0.125 sec
-- Available: True
-- Performance: PASS
+Программа запросит:
 
-## Проверка ссылок
+    Введите URL сайта:
 
-- Проверено ссылок: 20
-- Битых ссылок: 0
+Например:
 
-## UI-проверка через Selenium
+    https://www.python.org
 
-- UI status: ERROR
-- Title:
-- Title exists: False
-- Error: Page load timeout
-```
+Пример результата HTTP-проверки:
+
+    URL: https://www.python.org
+    Status code: 200
+    Response time: 0.12 sec
+    Available: True
+    Performance: PASS
+
+Пример проверки ссылок:
+
+    Всего ссылок: 20
+    Битых ссылок: 0
+
+Пример UI-ошибки:
+
+    UI status: ERROR
+    Title:
+    Title exists: False
+    H1 exists: False
+    H1 text:
+    UI error: Page load timeout
+    Screenshot: screenshots/ui_error_2026-10-05_00-33-46.png
+
+## Установка
+
+Клонировать репозиторий:
+
+    git clone https://github.com/dimadvorokovsky/qa-audit-service.git
+
+Перейти в каталог проекта:
+
+    cd qa-audit-service
+
+Создать virtual environment:
+
+    python -m venv venv
+
+Для Windows PowerShell:
+
+    .\venv\Scripts\Activate.ps1
+
+Если PowerShell блокирует запуск скрипта:
+
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+После этого снова:
+
+    .\venv\Scripts\Activate.ps1
+
+Установить зависимости:
+
+    pip install -r requirements.txt
 
 ## Ручное тестирование
 
-Кроме автоматизированных проверок в проект входят:
+Кроме автоматизированных проверок в репозитории находятся:
 
-- универсальный QA-чек-лист;
-- шаблон bug report;
-- шаблон итогового audit report.
+- `checklist.md` — универсальный QA checklist;
+- `bug_report_template.md` — шаблон bug report;
+- `audit_report_template.md` — шаблон итогового аудита.
 
-Файл `checklist.md` содержит проверки:
+Checklist включает:
 
-- доступности;
-- навигации;
-- форм;
-- кнопок;
-- контента;
-- адаптивности;
-- пользовательских сценариев;
-- негативных сценариев;
+- доступность;
+- навигацию;
+- формы;
+- кнопки;
+- контент;
+- responsive checks;
+- пользовательские сценарии;
+- negative scenarios;
 - UX;
-- финального оформления аудита.
+- финализацию QA-аудита.
+
+## Архитектурные решения
+
+В проекте реализованы:
+
+- разделение проверок по модулям;
+- отдельный report writer;
+- обработка ошибок отдельных модулей;
+- structured results через dictionaries;
+- URL normalization;
+- reusable Selenium driver;
+- pytest fixtures;
+- unit/integration separation;
+- автоматическое сохранение evidence при UI-ошибке.
 
 ## Цель проекта
 
-Основная цель — создать не только учебный набор автотестов, а развиваемый QA-инструмент, который можно использовать для реального технического аудита сайтов.
+Цель проекта — создать не просто набор учебных автотестов, а самостоятельный QA-инструмент, который можно использовать как основу для реального технического аудита сайтов.
 
-Проект позволяет практиковать:
+Проект демонстрирует практику работы с:
 
 - manual QA;
 - web testing;
 - HTTP;
-- автоматизацию;
+- HTML parsing;
 - Selenium;
 - Python;
 - pytest;
-- обработку ошибок;
-- построение тестовой архитектуры;
-- создание QA-отчётности;
+- fixtures;
+- error handling;
+- test architecture;
+- QA reporting;
 - Git/GitHub.
 
-## Roadmap
+## Roadmap после v1.0
 
-План дальнейшего развития:
+После завершения первой стабильной версии возможны:
 
-- расширение Selenium UI-проверок;
-- smoke UI scenarios;
-- browser-based form checks;
-- автоматические screenshots;
-- улучшение обработки ошибок модулей;
-- нормализация URL;
-- параллельная проверка ссылок;
-- разделение unit и integration tests;
-- pytest fixtures для браузера;
-- Allure reports;
-- HTML report;
-- PDF report;
-- web interface;
-- FastAPI;
-- история аудитов;
-- база данных;
 - GitHub Actions;
+- Allure report generation;
+- HTML reports;
+- PDF reports;
+- FastAPI interface;
+- история аудитов;
+- database;
 - Docker;
-- запуск на реальных клиентских сайтах.
+- параллельная проверка ссылок;
+- дополнительные accessibility checks;
+- запуск аудитов для реальных пользователей и клиентов.
 
 ## Автор
 
