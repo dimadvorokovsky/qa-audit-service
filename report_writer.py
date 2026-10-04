@@ -18,6 +18,9 @@ def get_overall_status(main_result, broken_links, ui_result):
     if not ui_result["title_exists"]:
         return "WARN"
 
+    if not ui_result["h1_exists"]:
+        return "WARN"
+
     return "PASS"
 
 
@@ -158,6 +161,12 @@ def save_report(url, main_result, links, forms, ui_result):
         )
         file.write(
             f"- Title exists: {ui_result['title_exists']}\n"
+        )
+        file.write(
+            f"- H1 exists: {ui_result['h1_exists']}\n"
+        )
+        file.write(
+            f"- H1 text: {ui_result['h1_text']}\n"
         )
 
         if "error" in ui_result:

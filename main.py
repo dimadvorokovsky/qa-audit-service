@@ -74,9 +74,14 @@ def main():
     print(f"UI status: {ui_result['ui_status']}")
     print(f"Title: {ui_result['title']}")
     print(f"Title exists: {ui_result['title_exists']}")
+    print(f"H1 exists: {ui_result['h1_exists']}")
+    print(f"H1 text: {ui_result['h1_text']}")
 
     if "error" in ui_result:
         print(f"UI error: {ui_result['error']}")
+
+    if ui_result.get("screenshot"):
+        print(f"Screenshot: {ui_result['screenshot']}")
 
     report_path = save_report(
         url=url,
