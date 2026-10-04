@@ -76,6 +76,10 @@ def main():
     print(f"Title exists: {ui_result['title_exists']}")
     print(f"H1 exists: {ui_result['h1_exists']}")
     print(f"H1 text: {ui_result['h1_text']}")
+    print(f"Links exist: {ui_result['links_exist']}")
+    print(f"Links count: {ui_result['links_count']}")
+    print(f"Buttons exist: {ui_result['buttons_exist']}")
+    print(f"Buttons count: {ui_result['buttons_count']}")
 
     if "error" in ui_result:
         print(f"UI error: {ui_result['error']}")

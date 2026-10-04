@@ -3,16 +3,27 @@ from urllib.parse import quote
 from checks.ui_checks import check_page_title
 
 
-def build_data_url(title="Python Test", h1="Python QA Audit"):
+def build_data_url(
+    title="Python Test",
+    h1="Python QA Audit",
+    include_link=True,
+    include_button=True
+):
+    body = f"<h1>{h1}</h1>"
+
+    if include_link:
+        body += '<a href="https://example.com">Example link</a>'
+
+    if include_button:
+        body += "<button>Submit</button>"
+
     html = (
         "<html>"
         "<head>"
         '<meta charset="utf-8">'
         f"<title>{title}</title>"
         "</head>"
-        "<body>"
-        f"<h1>{h1}</h1>"
-        "</body>"
+        f"<body>{body}</body>"
         "</html>"
     )
 
@@ -60,6 +71,8 @@ def test_missing_h1_returns_warn():
         "</head>"
         "<body>"
         "<p>No heading</p>"
+        '<a href="https://example.com">Example link</a>'
+        "<button>Submit</button>"
         "</body>"
         "</html>"
     )
@@ -69,3 +82,51 @@ def test_missing_h1_returns_warn():
     result = check_page_title(url)
 
     assert result["ui_status"] == "WARN"
+
+
+def test_links_exist():
+    url = build_data_url()
+
+    result = check_page_title(url)
+
+    assert result["links_exist"] is True
+
+
+def test_links_count():
+    url = build_data_url()
+
+    result = check_page_title(url)
+
+    assert result["links_count"] == 1
+
+
+def test_buttons_exist():
+    url = build_data_url()
+
+    result = check_page_title(url)
+
+    assert result["buttons_exist"] is True
+
+
+def test_buttons_count():
+    url = build_data_url()
+
+    result = check_page_title(url)
+
+    assert result["buttons_count"] == 1
+
+
+def test_missing_link_returns_false():
+    url = build_data_url(include_link=False)
+
+    result = check_page_title(url)
+
+    assert result["links_exist"] is False
+
+
+def test_missing_button_returns_false():
+    url = build_data_url(include_button=False)
+
+    result = check_page_title(url)
+
+    assert result["buttons_exist"] is False

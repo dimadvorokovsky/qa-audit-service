@@ -153,20 +153,41 @@ def save_report(url, main_result, links, forms, ui_result):
                 file.write("\n")
 
         file.write("## UI-проверка через Selenium\n\n")
+
         file.write(
             f"- UI status: {ui_result['ui_status']}\n"
         )
+
         file.write(
             f"- Title: {ui_result['title']}\n"
         )
+
         file.write(
             f"- Title exists: {ui_result['title_exists']}\n"
         )
+
         file.write(
             f"- H1 exists: {ui_result['h1_exists']}\n"
         )
+
         file.write(
             f"- H1 text: {ui_result['h1_text']}\n"
+        )
+
+        file.write(
+            f"- Links exist: {ui_result['links_exist']}\n"
+        )
+
+        file.write(
+            f"- Links count: {ui_result['links_count']}\n"
+        )
+
+        file.write(
+            f"- Buttons exist: {ui_result['buttons_exist']}\n"
+        )
+
+        file.write(
+            f"- Buttons count: {ui_result['buttons_count']}\n"
         )
 
         if "error" in ui_result:
