@@ -4,6 +4,7 @@ QA Audit Service — сервис для автоматизированного 
 
 Проект создан как портфолио-проект Junior QA Engineer и развивается как практический инструмент для базовой технической и UI-проверки веб-сайтов.
 
+
 ## Возможности
 
 Сервис выполняет:
@@ -15,9 +16,12 @@ QA Audit Service — сервис для автоматизированного 
 - поиск внутренних ссылок;
 - нормализацию URL;
 - обнаружение битых ссылок;
+- группировку битых ссылок по проблемным URL-веткам;
 - поиск HTML-форм;
 - анализ полей форм;
 - анализ submit-кнопок;
+- дедупликацию одинаковых форм;
+- подсчёт количества экземпляров одинаковой формы в DOM;
 - UI-проверки через Selenium;
 - проверку наличия `title`;
 - проверку наличия `h1`;
@@ -29,6 +33,7 @@ QA Audit Service — сервис для автоматизированного 
 - автоматическое создание screenshot при UI-ошибке;
 - обработку Selenium timeout и WebDriver ошибок;
 - автоматическое формирование Markdown-отчёта.
+
 
 ## Логика работы
 
@@ -53,6 +58,7 @@ QA Audit Service — сервис для автоматизированного 
 - добавляет путь к screenshot в отчёт;
 - выставляет общий статус `WARN`.
 
+
 ## Статусы
 
 Используются четыре основных статуса:
@@ -64,13 +70,16 @@ QA Audit Service — сервис для автоматизированного 
 
 Пример:
 
-    UI status: ERROR
-    Title:
-    Title exists: False
-    H1 exists: False
-    H1 text:
-    Error: Page load timeout
-    Screenshot: screenshots/ui_error_2026-10-05_00-33-46.png
+```text
+UI status: ERROR
+Title:
+Title exists: False
+H1 exists: False
+H1 text:
+Error: Page load timeout
+Screenshot: screenshots/ui_error_2026-10-05_00-33-46.png
+```
+
 
 ## Технологии
 
@@ -83,38 +92,47 @@ QA Audit Service — сервис для автоматизированного 
 - Git
 - GitHub
 
+
 ## Структура проекта
 
-    qa-audit-service/
-    │
-    ├── checks/
-    │   ├── __init__.py
-    │   ├── http_checks.py
-    │   ├── link_checks.py
-    │   ├── forms_checks.py
-    │   └── ui_checks.py
-    │
-    ├── tests/
-    │   ├── __init__.py
-    │   ├── conftest.py
-    │   ├── test_http_checks.py
-    │   ├── test_link_checks.py
-    │   ├── test_forms_checks.py
-    │   └── test_ui_checks.py
-    │
-    ├── reports/
-    ├── screenshots/
-    │
-    ├── audit_report_template.md
-    ├── bug_report_template.md
-    ├── checklist.md
-    ├── config.py
-    ├── main.py
-    ├── pytest.ini
-    ├── report_writer.py
-    ├── requirements.txt
-    ├── .gitignore
-    └── README.md
+```text
+qa-audit-service/
+│
+├── checks/
+│   ├── __init__.py
+│   ├── http_checks.py
+│   ├── link_checks.py
+│   ├── forms_checks.py
+│   └── ui_checks.py
+│
+├── examples/
+│   └── filsnab.ru/
+│       ├── README.md
+│       └── audit.md
+│
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_http_checks.py
+│   ├── test_link_checks.py
+│   ├── test_forms_checks.py
+│   └── test_ui_checks.py
+│
+├── reports/
+├── screenshots/
+│
+├── audit_report_template.md
+├── bug_report_template.md
+├── checklist.md
+├── config.py
+├── main.py
+├── pytest.ini
+├── report_writer.py
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
+
 
 ## HTTP-проверка
 
@@ -127,11 +145,14 @@ QA Audit Service — сервис для автоматизированного 
 
 Базовая классификация времени ответа:
 
-    < 1 сек      PASS
-    1–3 сек      WARN
-    > 3 сек      FAIL
+```text
+< 1 сек      PASS
+1–3 сек      WARN
+> 3 сек      FAIL
+```
 
 Важно: это время HTTP-ответа сервера, а не полноценный frontend performance audit и не Core Web Vitals.
+
 
 ## Проверка ссылок
 
@@ -149,17 +170,34 @@ QA Audit Service — сервис для автоматизированного 
 
 За один аудит проверяется до:
 
-    20 ссылок
+```text
+20 ссылок
+```
 
 Нормализация позволяет избежать дублей вида:
 
-    https://www.python.org
-    https://www.python.org/
+```text
+https://www.python.org
+https://www.python.org/
+```
 
 и:
 
-    https://www.python.org/about
-    https://www.python.org/about/
+```text
+https://www.python.org/about
+https://www.python.org/about/
+```
+
+В Markdown-отчёте битые ссылки дополнительно группируются по проблемным URL-веткам.
+
+Например:
+
+```text
+/catalog/filtratsiya — 7 битых ссылок
+/catalog/filtratsiyaa — 7 битых ссылок
+/blogg — 1 битая ссылка
+```
+
 
 ## Проверка форм
 
@@ -167,7 +205,6 @@ QA Audit Service — сервис для автоматизированного 
 
 Для каждой формы определяется:
 
-- номер;
 - HTTP method;
 - action;
 - количество полей;
@@ -177,14 +214,28 @@ QA Audit Service — сервис для автоматизированного 
 - наличие `required`;
 - количество submit-кнопок.
 
+Одинаковые формы группируются по:
+
+- method;
+- action;
+- набору полей.
+
+Если одинаковая форма встречается в DOM несколько раз, сервис выводит её один раз и отдельно указывает количество экземпляров.
+
 Пример:
 
-    Форма #1
-    Method: GET
-    Action: https://www.python.org/search/
-    Количество полей: 1
-    Кнопок submit: 1
-    - input | type=search | name=q | required=False
+```text
+Форма #1
+Экземпляров: 4
+Method: GET
+Action: https://filsnab.ru/catalog/
+Количество полей в одном экземпляре: 2
+Submit-кнопок в одном экземпляре: 1
+
+- input | type=text | name=q | required=False
+- input | type=hidden | name=type | required=False
+```
+
 
 ## Selenium UI-аудит
 
@@ -204,15 +255,18 @@ QA Audit Service — сервис для автоматизированного 
 
 Пример успешного результата:
 
-    UI status: PASS
-    Title: QA Test
-    Title exists: True
-    H1 exists: True
-    H1 text: Главный заголовок
-    Links exist: True
-    Links count: 1
-    Buttons exist: True
-    Buttons count: 1
+```text
+UI status: PASS
+Title: QA Test
+Title exists: True
+H1 exists: True
+H1 text: Главный заголовок
+Links exist: True
+Links count: 1
+Buttons exist: True
+Buttons count: 1
+```
+
 
 ## Проверка изображений
 
@@ -229,9 +283,12 @@ QA Audit Service — сервис для автоматизированного 
 
 Пример:
 
-    Images count: 3
-    Images with alt: 2
-    Images without alt: 1
+```text
+Images count: 3
+Images with alt: 2
+Images without alt: 1
+```
+
 
 ## Автотесты
 
@@ -253,7 +310,10 @@ QA Audit Service — сервис для автоматизированного 
 
 Текущий полный набор:
 
-    37 passed
+```text
+37 passed
+```
+
 
 ## Unit и integration tests
 
@@ -261,29 +321,42 @@ QA Audit Service — сервис для автоматизированного 
 
 Для integration tests используется marker:
 
-    @pytest.mark.integration
+```python
+@pytest.mark.integration
+```
 
 Маркер зарегистрирован в `pytest.ini`.
 
 Запуск только быстрых тестов:
 
-    pytest -v -m "not integration"
+```bash
+pytest -v -m "not integration"
+```
 
 Текущий результат:
 
-    25 passed, 12 deselected
+```text
+25 passed, 12 deselected
+```
 
 Запуск только integration tests:
 
-    pytest -v -m integration
+```bash
+pytest -v -m integration
+```
 
 Текущий результат:
 
-    12 passed, 25 deselected
+```text
+12 passed, 25 deselected
+```
 
 Запуск всего набора:
 
-    pytest -v
+```bash
+pytest -v
+```
+
 
 ## Оптимизация Selenium tests
 
@@ -293,17 +366,24 @@ Firefox запускается один раз на тестовую сесси�
 
 До оптимизации запуск UI-тестов занимал примерно:
 
-    84–98 секунд
+```text
+84–98 секунд
+```
 
 После оптимизации:
 
-    17 passed in 4.33s
+```text
+17 passed in 4.33s
+```
 
 Полный тестовый прогон после оптимизации:
 
-    37 passed in 17.25s
+```text
+37 passed in 17.25s
+```
 
 Это позволяет заметно сократить время локального запуска тестов и будущего CI pipeline.
+
 
 ## Обработка Selenium ошибок
 
@@ -317,34 +397,46 @@ Firefox запускается один раз на тестовую сесси�
 
 При timeout возвращается структурированный результат:
 
-    UI status: ERROR
-    Title:
-    Title exists: False
-    H1 exists: False
-    H1 text:
-    Error: Page load timeout
+```text
+UI status: ERROR
+Title:
+Title exists: False
+H1 exists: False
+H1 text:
+Error: Page load timeout
+```
+
 
 ## Screenshots
 
 При UI-ошибке сервис автоматически сохраняет screenshot в каталог:
 
-    screenshots/
+```text
+screenshots/
+```
 
 Пример:
 
-    screenshots/ui_error_2026-10-05_00-33-46.png
+```text
+screenshots/ui_error_2026-10-05_00-33-46.png
+```
 
 Путь к screenshot добавляется в итоговый audit report.
+
 
 ## Отчёты
 
 После выполнения аудита Markdown-отчёт автоматически сохраняется в:
 
-    reports/
+```text
+reports/
+```
 
 Имя файла содержит дату и время запуска:
 
-    audit_2026-10-05_00-33-47.md
+```text
+audit_2026-10-05_00-33-47.md
+```
 
 В отчёт входят:
 
@@ -355,7 +447,10 @@ Firefox запускается один раз на тестовую сесси�
 - response time;
 - результат проверки доступности;
 - результат проверки внутренних ссылок;
-- найденные битые ссылки;
+- группировка проблемных URL-веток;
+- полный список найденных битых ссылок;
+- количество уникальных форм;
+- количество экземпляров одинаковых форм в DOM;
 - данные HTML-форм;
 - Selenium UI results;
 - `title`;
@@ -368,72 +463,107 @@ Firefox запускается один раз на тестовую сесси�
 - путь к screenshot;
 - краткое заключение.
 
+
 ## Пример запуска
 
 Запуск проекта:
 
-    python main.py
+```bash
+python main.py
+```
 
 Программа запросит:
 
-    Введите URL сайта:
+```text
+Введите URL сайта:
+```
 
 Например:
 
-    https://www.python.org
+```text
+https://www.python.org
+```
 
 Пример результата HTTP-проверки:
 
-    URL: https://www.python.org
-    Status code: 200
-    Response time: 0.12 sec
-    Available: True
-    Performance: PASS
+```text
+URL: https://www.python.org
+Status code: 200
+Response time: 0.12 sec
+Available: True
+Performance: PASS
+```
 
 Пример проверки ссылок:
 
-    Всего ссылок: 20
-    Битых ссылок: 0
+```text
+Всего ссылок: 20
+Битых ссылок: 0
+```
 
 Пример UI-ошибки:
 
-    UI status: ERROR
-    Title:
-    Title exists: False
-    H1 exists: False
-    H1 text:
-    UI error: Page load timeout
-    Screenshot: screenshots/ui_error_2026-10-05_00-33-46.png
+```text
+UI status: ERROR
+Title:
+Title exists: False
+H1 exists: False
+H1 text:
+UI error: Page load timeout
+Screenshot: screenshots/ui_error_2026-10-05_00-33-46.png
+```
+
 
 ## Установка
 
 Клонировать репозиторий:
 
-    git clone https://github.com/dimadvorokovsky/qa-audit-service.git
+```bash
+git clone https://github.com/dimadvorokovsky/qa-audit-service.git
+```
 
 Перейти в каталог проекта:
 
-    cd qa-audit-service
+```bash
+cd qa-audit-service
+```
 
 Создать virtual environment:
 
-    python -m venv venv
+```bash
+python -m venv venv
+```
 
 Для Windows PowerShell:
 
-    .\venv\Scripts\Activate.ps1
+```powershell
+.\venv\Scripts\Activate.ps1
+```
 
 Если PowerShell блокирует запуск скрипта:
 
-    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
 
 После этого снова:
 
-    .\venv\Scripts\Activate.ps1
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+Для Windows CMD:
+
+```bat
+venv\Scripts\activate
+```
 
 Установить зависимости:
 
-    pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
+```
+
 
 ## Ручное тестирование
 
@@ -456,6 +586,7 @@ Checklist включает:
 - UX;
 - финализацию QA-аудита.
 
+
 ## Архитектурные решения
 
 В проекте реализованы:
@@ -468,7 +599,10 @@ Checklist включает:
 - reusable Selenium driver;
 - pytest fixtures;
 - unit/integration separation;
-- автоматическое сохранение evidence при UI-ошибке.
+- автоматическое сохранение evidence при UI-ошибке;
+- дедупликация одинаковых HTML-форм;
+- группировка битых ссылок по URL-веткам.
+
 
 ## Цель проекта
 
@@ -489,10 +623,115 @@ Checklist включает:
 - QA reporting;
 - Git/GitHub.
 
+
+## Real-world audit case: filsnab.ru
+
+QA Audit Service был протестирован на реальном веб-сайте:
+
+```text
+https://filsnab.ru/
+```
+
+Цель проверки — не только найти технические проблемы сайта, но и проверить сам QA Audit Service в условиях реального проекта.
+
+
+### Результат контрольного прогона
+
+```text
+Status Code: 200 OK
+Response time: 0.187 sec
+Performance: PASS
+
+Проверено внутренних ссылок: 20
+Найдено битых ссылок: 16
+
+Уникальных форм: 1
+Экземпляров формы в DOM: 4
+
+UI status: WARN
+Title exists: True
+H1 exists: False
+
+Images count: 15
+Images without alt: 1
+```
+
+
+### Найденные проблемные URL-ветки
+
+```text
+/catalog/filtratsiya — 7 битых ссылок
+/catalog/filtratsiyaa — 7 битых ссылок
+/blogg — 1 битая ссылка
+/catalog/gidravlika — 1 битая ссылка
+```
+
+Дополнительно:
+
+- на главной странице не обнаружен `H1`;
+- у одного изображения отсутствует `alt`.
+
+
+### Что было улучшено после реального аудита
+
+Первый прогон реального сайта выявил недостатки не только сайта, но и самого QA Audit Service.
+
+До доработки сервис выводил четыре одинаковые формы как четыре отдельных результата.
+
+После анализа была реализована дедупликация форм.
+
+Теперь отчёт показывает:
+
+```text
+Уникальных форм: 1
+Всего экземпляров форм в DOM: 4
+```
+
+Также был улучшен анализ битых ссылок.
+
+Вместо только длинного списка 404 сервис теперь дополнительно формирует компактную сводку по проблемным URL-веткам.
+
+Были добавлены:
+
+- дедупликация одинаковых форм;
+- подсчёт экземпляров формы в DOM;
+- группировка битых URL по проблемным веткам;
+- сохранение полного списка 404;
+- улучшенная структура Markdown-отчёта;
+- корректное склонение количества битых ссылок.
+
+
+### Цикл работы над кейсом
+
+```text
+реальный сайт
+→ автоматический аудит
+→ анализ результатов
+→ выявление недостатков самого инструмента
+→ доработка QA Audit Service
+→ повторное тестирование
+→ контрольный прогон
+```
+
+Таким образом, кейс демонстрирует не только запуск готового инструмента, но и полный QA-цикл с анализом результатов и улучшением продукта на основании реальных данных.
+
+
+### Материалы кейса
+
+Описание:
+
+[`examples/filsnab.ru/README.md`](examples/filsnab.ru/README.md)
+
+Финальный Markdown-отчёт:
+
+[`examples/filsnab.ru/audit.md`](examples/filsnab.ru/audit.md)
+
+
 ## Roadmap после v1.0
 
 После завершения первой стабильной версии возможны:
 
+- AI QA Agent;
 - GitHub Actions;
 - Allure report generation;
 - HTML reports;
@@ -504,6 +743,7 @@ Checklist включает:
 - параллельная проверка ссылок;
 - дополнительные accessibility checks;
 - запуск аудитов для реальных пользователей и клиентов.
+
 
 ## Автор
 
