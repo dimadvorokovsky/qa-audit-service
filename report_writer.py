@@ -1,5 +1,16 @@
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
+
+
+def pluralize_links(count):
+    if count % 10 == 1 and count % 100 != 11:
+        return "битая ссылка"
+
+    if count % 10 in (2, 3, 4) and count % 100 not in (12, 13, 14):
+        return "битые ссылки"
+
+    return "битых ссылок"
 
 
 def get_overall_status(main_result, broken_links, ui_result):
@@ -38,6 +49,28 @@ def save_report(url, main_result, links, forms, ui_result):
         link for link in links
         if link["is_broken"]
     ]
+
+    broken_link_groups = {}
+
+    for link in broken_links:
+        parsed_url = urlparse(link["url"])
+
+        path_parts = [
+            part for part in parsed_url.path.split("/")
+            if part
+        ]
+
+        if not path_parts:
+            group_key = "/"
+
+        elif path_parts[0] == "catalog" and len(path_parts) >= 2:
+            group_key = f"/catalog/{path_parts[1]}"
+
+        else:
+            group_key = f"/{path_parts[0]}"
+
+        broken_link_groups.setdefault(group_key, 0)
+        broken_link_groups[group_key] += 1
 
     overall_status = get_overall_status(
         main_result,
@@ -86,6 +119,19 @@ def save_report(url, main_result, links, forms, ui_result):
                 "- Результат: **Найдены проблемные ссылки**\n\n"
             )
 
+            file.write("### Проблемные ветки\n\n")
+
+            for group, count in sorted(
+                broken_link_groups.items(),
+                key=lambda item: item[1],
+                reverse=True
+            ):
+                file.write(
+                    f"- {group} — {count} {pluralize_links(count)}\n"
+                )
+
+            file.write("\n")
+
             file.write("### Битые ссылки\n\n")
 
             for link in broken_links:
@@ -102,43 +148,69 @@ def save_report(url, main_result, links, forms, ui_result):
             )
 
         file.write("## Проверка форм\n\n")
-        file.write(
-            f"- Найдено форм: {len(forms)}\n"
+
+        unique_forms_count = len(forms)
+
+        total_form_instances = sum(
+            form.get("instances", 1)
+            for form in forms
         )
 
         total_fields = sum(
-            len(form["fields"])
+            len(form["fields"]) * form.get("instances", 1)
             for form in forms
         )
 
         total_submit_buttons = sum(
-            len(form["submit_buttons"])
+            len(form["submit_buttons"]) * form.get("instances", 1)
             for form in forms
         )
 
         file.write(
-            f"- Всего полей: {total_fields}\n"
+            f"- Уникальных форм: {unique_forms_count}\n"
         )
+
         file.write(
-            f"- Submit-кнопок: {total_submit_buttons}\n\n"
+            f"- Всего экземпляров форм в DOM: "
+            f"{total_form_instances}\n"
+        )
+
+        file.write(
+            f"- Всего полей во всех экземплярах: "
+            f"{total_fields}\n"
+        )
+
+        file.write(
+            f"- Submit-кнопок во всех экземплярах: "
+            f"{total_submit_buttons}\n\n"
         )
 
         for form in forms:
+            instances = form.get("instances", 1)
+
             file.write(
                 f"### Форма #{form['form_number']}\n\n"
             )
+
+            file.write(
+                f"- Экземпляров: {instances}\n"
+            )
+
             file.write(
                 f"- Method: {form['method']}\n"
             )
+
             file.write(
                 f"- Action: {form['action']}\n"
             )
+
             file.write(
-                f"- Количество полей: "
+                f"- Количество полей в одном экземпляре: "
                 f"{len(form['fields'])}\n"
             )
+
             file.write(
-                f"- Submit-кнопок: "
+                f"- Submit-кнопок в одном экземпляре: "
                 f"{len(form['submit_buttons'])}\n\n"
             )
 
