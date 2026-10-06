@@ -6,3 +6,5 @@ __pycache__/
 allure-results/
 *.pyc
 .env
+reports/audit_*.md
+reports/agent_*.md
