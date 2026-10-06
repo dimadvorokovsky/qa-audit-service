@@ -1,18 +1,22 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class AgentReportWriter:
     """
-    Сохраняет результат работы AI QA Agent
+    Сохраняет результат работы QA Agent
     в отдельный Markdown-отчёт.
+
+    Детерминированные результаты и LLM-анализ
+    сохраняются в отдельных разделах.
     """
 
     def save(
         self,
         url: str,
         agent_result: Dict[str, Any],
+        llm_result: Optional[Dict[str, Any]] = None,
         output_dir: str = "reports",
     ) -> str:
         Path(output_dir).mkdir(
@@ -31,6 +35,7 @@ class AgentReportWriter:
         content = self._build_report(
             url=url,
             agent_result=agent_result,
+            llm_result=llm_result,
         )
 
         file_path.write_text(
@@ -44,6 +49,7 @@ class AgentReportWriter:
         self,
         url: str,
         agent_result: Dict[str, Any],
+        llm_result: Optional[Dict[str, Any]] = None,
     ) -> str:
         issues = agent_result.get(
             "issues",
@@ -66,7 +72,7 @@ class AgentReportWriter:
         )
 
         lines = [
-            "# AI QA Agent Report",
+            "# QA Agent Report",
             "",
             f"**URL:** {url}",
             "",
@@ -77,7 +83,7 @@ class AgentReportWriter:
             "",
             "---",
             "",
-            "## QA Summary",
+            "## Deterministic QA Summary",
             "",
             "```text",
             summary,
@@ -102,6 +108,12 @@ class AgentReportWriter:
         lines.extend(
             self._build_bug_reports(
                 bug_reports
+            )
+        )
+
+        lines.extend(
+            self._build_llm_analysis(
+                llm_result
             )
         )
 
@@ -193,8 +205,8 @@ class AgentReportWriter:
             lines.extend(
                 [
                     (
-                        "Дополнительных manual checks "
-                        "не сформировано."
+                        "Дополнительные manual checks "
+                        "не сформированы."
                     ),
                     "",
                     "---",
@@ -263,8 +275,13 @@ class AgentReportWriter:
         ]
 
         if not bug_reports:
-            lines.append(
-                "Черновики bug reports не сформированы."
+            lines.extend(
+                [
+                    "Черновики bug reports не сформированы.",
+                    "",
+                    "---",
+                    "",
+                ]
             )
 
             return lines
@@ -354,6 +371,188 @@ class AgentReportWriter:
 
         return lines
 
+    def _build_llm_analysis(
+        self,
+        llm_result: Optional[Dict[str, Any]],
+    ) -> List[str]:
+        lines = [
+            "## LLM Analysis",
+            "",
+        ]
+
+        if llm_result is None:
+            lines.extend(
+                [
+                    "**Status:** not_run",
+                    "",
+                    (
+                        "LLM-анализ не запускался для "
+                        "этого отчёта."
+                    ),
+                    "",
+                ]
+            )
+
+            return lines
+
+        status_value = llm_result.get(
+            "status",
+            "unknown",
+        )
+
+        lines.extend(
+            [
+                f"**Status:** {status_value}",
+                "",
+            ]
+        )
+
+        if status_value != "success":
+            lines.extend(
+                [
+                    (
+                        f"**Reason:** "
+                        f"{llm_result.get('reason', '')}"
+                    ),
+                    "",
+                    (
+                        "Детерминированные результаты "
+                        "аудита остаются доступными выше."
+                    ),
+                    "",
+                ]
+            )
+
+            return lines
+
+        analysis = llm_result.get(
+            "analysis",
+            {},
+        )
+
+        lines.extend(
+            [
+                "### Executive Summary",
+                "",
+                analysis.get(
+                    "executive_summary",
+                    "",
+                ),
+                "",
+                "### Risk Assessment",
+                "",
+                analysis.get(
+                    "risk_assessment",
+                    "",
+                ),
+                "",
+                "### Additional Manual Checks",
+                "",
+            ]
+        )
+
+        additional_checks = analysis.get(
+            "additional_manual_checks",
+            [],
+        )
+
+        if not additional_checks:
+            lines.append(
+                "Дополнительных проверок не предложено."
+            )
+        else:
+            for number, check in enumerate(
+                additional_checks,
+                start=1,
+            ):
+                lines.extend(
+                    [
+                        (
+                            f"{number}. "
+                            f"**{check.get('title', '')}**"
+                        ),
+                        (
+                            f"   - Reason: "
+                            f"{check.get('reason', '')}"
+                        ),
+                    ]
+                )
+
+        lines.extend(
+            [
+                "",
+                "### Bug Report Improvements",
+                "",
+            ]
+        )
+
+        improvements = analysis.get(
+            "bug_report_improvements",
+            [],
+        )
+
+        if not improvements:
+            lines.append(
+                "Предложений по улучшению нет."
+            )
+        else:
+            for number, improvement in enumerate(
+                improvements,
+                start=1,
+            ):
+                lines.extend(
+                    [
+                        (
+                            f"{number}. "
+                            f"**{improvement.get('issue', '')}**"
+                        ),
+                        (
+                            f"   - Suggestion: "
+                            f"{improvement.get('suggestion', '')}"
+                        ),
+                    ]
+                )
+
+        lines.extend(
+            [
+                "",
+                "### Confidence Notes",
+                "",
+            ]
+        )
+
+        confidence_notes = analysis.get(
+            "confidence_notes",
+            [],
+        )
+
+        if not confidence_notes:
+            lines.append(
+                "Комментариев по уверенности нет."
+            )
+        else:
+            for note in confidence_notes:
+                lines.append(
+                    f"- {note}"
+                )
+
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                (
+                    "> LLM analysis is advisory. "
+                    "Confirmed Issues above are produced "
+                    "by deterministic checks and remain "
+                    "the source of factual audit evidence."
+                ),
+                "",
+            ]
+        )
+
+        return lines
+
     def _format_value(
         self,
         value: Any,
@@ -436,6 +635,7 @@ class AgentReportWriter:
                         f"{prefix}- "
                         f"{status_code} | {url}"
                     )
+
                 else:
                     lines.append(
                         f"{prefix}-"

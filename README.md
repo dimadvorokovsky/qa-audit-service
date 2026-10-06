@@ -1,1946 +1,1044 @@
-\# QA Audit Service + AI QA Agent
-
-
-
-QA Audit Service — Python-сервис для автоматизированного технического и UI-аудита веб-сайтов.
-
-
-
-Проект создан как портфолио-проект Junior QA Engineer и развивается как практический QA-инструмент для технического анализа сайтов, формирования отчётов и последующей автоматизированной обработки результатов.
-
-
-
-Поверх QA Audit Service реализован \*\*AI QA Agent Core\*\*, который получает структурированные результаты аудита, выделяет подтверждённые технические проблемы, назначает приоритеты, формирует manual checks, QA Summary и черновики bug reports.
-
-
-
-> Текущая версия агента использует детерминированную rule-based логику. Подключение LLM-слоя для дополнительного анализа предусмотрено как дальнейшее развитие проекта.
-
-
-
-
-
-\## Возможности QA Audit Service
-
-
-
-Сервис выполняет:
-
-
-
-\- проверку доступности сайта;
-
-\- получение HTTP status code;
-
-\- измерение времени HTTP-ответа;
-
-\- базовую оценку времени ответа;
-
-\- поиск внутренних ссылок;
-
-\- нормализацию URL;
-
-\- обнаружение битых ссылок;
-
-\- группировку битых ссылок по проблемным URL-веткам;
-
-\- поиск HTML-форм;
-
-\- анализ полей форм;
-
-\- анализ submit-кнопок;
-
-\- дедупликацию одинаковых форм;
-
-\- подсчёт количества экземпляров одинаковой формы в DOM;
-
-\- UI-проверки через Selenium;
-
-\- проверку наличия `title`;
-
-\- проверку наличия `h1`;
-
-\- получение текста `h1`;
-
-\- подсчёт ссылок на странице;
-
-\- подсчёт кнопок;
-
-\- аудит изображений;
-
-\- поиск изображений без `alt`;
-
-\- автоматическое создание screenshot при UI-ошибке;
-
-\- обработку Selenium timeout и WebDriver ошибок;
-
-\- автоматическое формирование Markdown-отчёта.
-
-
-
-
-
-\## Возможности AI QA Agent
-
-
-
-После завершения технического аудита результаты автоматически передаются агенту.
-
-
-
-AI QA Agent Core выполняет:
-
-
-
-\- анализ структурированных результатов аудита;
-
-\- выделение подтверждённых технических проблем;
-
-\- приоритизацию `CRITICAL / HIGH / MEDIUM / LOW`;
-
-\- формирование списка проверок, требующих ручного QA-анализа;
-
-\- отделение подтверждённых дефектов от потенциально спорных находок;
-
-\- формирование QA Summary;
-
-\- генерацию черновиков bug reports;
-
-\- сохранение Evidence;
-
-\- создание отдельного Markdown-отчёта агента.
-
-
-
-
-
-\## Общая логика работы
-
-
+# QA Audit Service + QA Agent
+
+Python-сервис для автоматизированного технического и UI-аудита веб-сайтов с дополнительным QA Agent.
+
+Проект сочетает:
+
+- HTTP-проверки;
+- анализ внутренних ссылок;
+- поиск битых ссылок;
+- анализ HTML-форм;
+- Selenium UI-проверки;
+- проверку `title`;
+- проверку H1;
+- анализ изображений и `alt`;
+- автоматическое формирование Markdown-отчётов;
+- детерминированный QA Agent;
+- приоритизацию найденных проблем;
+- формирование manual checks;
+- автоматические bug report drafts;
+- дополнительный LLM-слой для интерпретации результатов.
+
+---
+
+## Current Status
+
+На текущем этапе реализованы:
+
+- QA Audit Service — готов;
+- deterministic QA Agent — готов;
+- LLM integration layer — готов;
+- OpenAI provider — подключается опционально;
+- fallback без API-ключа — реализован;
+- unit-тесты LLM-слоя — реализованы;
+- обработка ошибок Selenium — реализована;
+- Markdown-отчёты — реализованы;
+- real-world case study — реализован.
+
+Текущий результат тестов:
 
 ```text
+41 passed
+```
 
-URL сайта
+LLM-провайдер не является обязательным для работы проекта.
 
+Без API credentials сервис продолжает выполнять полный детерминированный аудит.
+
+---
+
+# Что делает проект
+
+Сервис получает URL сайта и автоматически выполняет несколько групп проверок.
+
+Общий процесс:
+
+```text
+URL
 ↓
-
 QA Audit Service
-
 ↓
-
-HTTP / Links / Forms / Selenium / Images
-
+HTTP checks
+Links checks
+Forms checks
+Selenium UI checks
+Images checks
 ↓
-
-структурированный результат аудита
-
+Structured audit result
 ↓
-
-технический Markdown-отчёт
-
+Deterministic QA Agent
 ↓
-
-AI QA Agent Core
-
-↓
-
 Confirmed Issues
-
-↓
-
-Prioritization
-
-↓
-
 Manual Checks
-
-↓
-
 QA Summary
-
-↓
-
 Bug Report Drafts
-
 ↓
-
-Agent Markdown Report
-
+Optional LLM Analysis
+↓
+Markdown Report
 ```
 
+---
 
+# Архитектурный принцип
 
-
-
-\## QA-подход агента
-
-
-
-Агент не объявляет каждую найденную особенность багом автоматически.
-
-
-
-Подтверждёнными проблемами считаются технические факты, которые можно доказать результатами проверки.
-
-
-
-Например:
-
-
+В проекте специально разделены:
 
 ```text
-
-внутренняя ссылка возвращает HTTP 404
-
-→ confirmed issue
-
+FACTS
 ```
-
-
-
-Находки, которые зависят от требований, назначения элемента или бизнес-логики, направляются в `Manual Checks`.
-
-
-
-Например:
-
-
-
-```text
-
-отсутствует H1
-
-→ проверить требования к конкретному типу страницы
-
-
-
-изображение без alt
-
-→ проверить, является ли изображение контентным или декоративным
-
-
-
-у формы отсутствует required
-
-→ проверить бизнес-логику формы
-
-```
-
-
-
-Такой подход уменьшает количество false positive и отделяет автоматически подтверждённые дефекты от ситуаций, которые требуют решения QA-инженера.
-
-
-
-
-
-\## Статусы QA Audit Service
-
-
-
-Используются четыре основных статуса:
-
-
-
-\- `PASS` — проверка завершена успешно;
-
-\- `WARN` — обнаружено предупреждение;
-
-\- `FAIL` — критическая проблема;
-
-\- `ERROR` — техническая ошибка выполнения отдельной проверки.
-
-
-
-Пример:
-
-
-
-```text
-
-UI status: ERROR
-
-Title:
-
-Title exists: False
-
-H1 exists: False
-
-H1 text:
-
-Error: Page load timeout
-
-Screenshot: screenshots/ui\_error\_2026-10-05\_00-33-46.png
-
-```
-
-
-
-
-
-\## Приоритеты AI QA Agent
-
-
-
-Агент использует четыре уровня приоритета:
-
-
-
-```text
-
-CRITICAL
-
-HIGH
-
-MEDIUM
-
-LOW
-
-```
-
-
-
-Пример:
-
-
-
-```text
-
-16 внутренних ссылок возвращают HTTP 404
-
-→ HIGH
-
-```
-
-
-
-Приоритет назначается на основании типа проблемы и её масштаба.
-
-
-
-
-
-\## Технологии
-
-
-
-\- Python
-
-\- Requests
-
-\- BeautifulSoup4
-
-\- Selenium WebDriver
-
-\- Pytest
-
-\- Allure Pytest
-
-\- Markdown
-
-\- Git
-
-\- GitHub
-
-
-
-
-
-\## Структура проекта
-
-
-
-```text
-
-qa-audit-service/
-
-│
-
-├── agent/
-
-│   ├── \_\_init\_\_.py
-
-│   ├── analyzer.py
-
-│   ├── prioritizer.py
-
-│   ├── manual\_checks.py
-
-│   ├── summary\_generator.py
-
-│   ├── bug\_report\_generator.py
-
-│   └── report\_writer.py
-
-│
-
-├── checks/
-
-│   ├── \_\_init\_\_.py
-
-│   ├── http\_checks.py
-
-│   ├── link\_checks.py
-
-│   ├── forms\_checks.py
-
-│   └── ui\_checks.py
-
-│
-
-├── examples/
-
-│   ├── ai-qa-agent/
-
-│   │   ├── README.md
-
-│   │   └── agent\_report.md
-
-│   │
-
-│   └── filsnab.ru/
-
-│       ├── README.md
-
-│       └── audit.md
-
-│
-
-├── tests/
-
-│   ├── \_\_init\_\_.py
-
-│   ├── conftest.py
-
-│   ├── test\_http\_checks.py
-
-│   ├── test\_link\_checks.py
-
-│   ├── test\_forms\_checks.py
-
-│   └── test\_ui\_checks.py
-
-│
-
-├── reports/
-
-├── screenshots/
-
-│
-
-├── audit\_report\_template.md
-
-├── bug\_report\_template.md
-
-├── checklist.md
-
-├── config.py
-
-├── main.py
-
-├── report\_writer.py
-
-├── test\_agent.py
-
-├── pytest.ini
-
-├── requirements.txt
-
-├── .gitignore
-
-└── README.md
-
-```
-
-
-
-
-
-\## HTTP-проверка
-
-
-
-Модуль `http\_checks.py` проверяет:
-
-
-
-\- доступность URL;
-
-\- HTTP status code;
-
-\- время HTTP-ответа;
-
-\- сетевые ошибки.
-
-
-
-Базовая классификация времени ответа:
-
-
-
-```text
-
-< 1 сек      PASS
-
-1–3 сек      WARN
-
-> 3 сек      FAIL
-
-```
-
-
-
-Важно: это время HTTP-ответа сервера, а не полноценный frontend performance audit и не Core Web Vitals.
-
-
-
-
-
-\## Проверка ссылок
-
-
-
-Модуль `link\_checks.py`:
-
-
-
-\- получает ссылки со страницы;
-
-\- выбирает внутренние ссылки;
-
-\- нормализует URL;
-
-\- удаляет fragment;
-
-\- приводит scheme и domain к нижнему регистру;
-
-\- убирает лишний trailing slash;
-
-\- сохраняет query parameters;
-
-\- проверяет HTTP status code;
-
-\- определяет битые ссылки.
-
-
-
-За один аудит проверяется до:
-
-
-
-```text
-
-20 ссылок
-
-```
-
-
-
-Нормализация позволяет избежать дублей вида:
-
-
-
-```text
-
-https://www.python.org
-
-https://www.python.org/
-
-```
-
-
 
 и:
 
-
-
 ```text
-
-https://www.python.org/about
-
-https://www.python.org/about/
-
+AI INTERPRETATION
 ```
 
+Фактические результаты формируются детерминированными проверками.
 
+LLM не является источником технических фактов.
 
-В Markdown-отчёте битые ссылки дополнительно группируются по проблемным URL-веткам.
+Он не должен:
 
+- изменять HTTP status codes;
+- изменять найденные URL;
+- самостоятельно объявлять manual check подтверждённым дефектом;
+- удалять confirmed issues;
+- изменять evidence;
+- утверждать, что дефект воспроизведён, если это не подтверждено автоматическими проверками.
 
+LLM используется только как дополнительный аналитический слой.
 
-Например:
+---
 
+# Основные возможности QA Audit Service
 
+## HTTP
 
-```text
+Проверяется:
 
-/catalog/filtratsiya — 7 битых ссылок
-
-/catalog/filtratsiyaa — 7 битых ссылок
-
-/blogg — 1 битая ссылка
-
-```
-
-
-
-
-
-\## Проверка форм
-
-
-
-Модуль `forms\_checks.py` анализирует HTML-формы.
-
-
-
-Для каждой формы определяется:
-
-
-
-\- HTTP method;
-
-\- action;
-
-\- количество полей;
-
-\- tag;
-
-\- type;
-
-\- name;
-
-\- наличие `required`;
-
-\- количество submit-кнопок.
-
-
-
-Одинаковые формы группируются по:
-
-
-
-\- method;
-
-\- action;
-
-\- набору полей.
-
-
-
-Если одинаковая форма встречается в DOM несколько раз, сервис выводит её один раз и отдельно указывает количество экземпляров.
-
-
+- доступность URL;
+- HTTP status code;
+- response time;
+- performance status.
 
 Пример:
 
-
-
 ```text
-
-Форма #1
-
-Экземпляров: 4
-
-Method: GET
-
-Action: https://filsnab.ru/catalog/
-
-Количество полей в одном экземпляре: 2
-
-Submit-кнопок в одном экземпляре: 1
-
-
-
-\- input | type=text | name=q | required=False
-
-\- input | type=hidden | name=type | required=False
-
+Status code: 200
+Response time: 0.19 sec
+Available: True
+Performance: PASS
 ```
 
+---
 
+## Internal Links
 
+Сервис:
 
+- получает внутренние ссылки страницы;
+- нормализует URL;
+- выполняет HTTP-проверки;
+- определяет битые ссылки;
+- сохраняет URL и status code.
 
-\## Selenium UI-аудит
+Пример:
 
+```text
+BROKEN | 404 | https://example.com/catalog/test
+```
 
+---
 
-Модуль `ui\_checks.py` запускает Firefox в headless-режиме.
+## Forms
 
+Сервис анализирует HTML-формы.
 
+Для каждой формы фиксируются:
+
+- method;
+- action;
+- поля;
+- типы полей;
+- `required`;
+- submit buttons;
+- количество одинаковых экземпляров формы в DOM.
+
+Одинаковые формы дедуплицируются.
+
+При этом сохраняется количество экземпляров:
+
+```text
+instances
+```
+
+Это позволяет отличить несколько одинаковых DOM-форм от нескольких различных форм.
+
+---
+
+## Selenium UI Checks
+
+Используется Selenium + Firefox.
 
 Проверяются:
 
+- title;
+- наличие H1;
+- текст H1;
+- ссылки;
+- кнопки;
+- изображения;
+- alt-тексты.
 
+При ошибках Selenium сервис не должен полностью прекращать аудит.
 
-\- загрузка страницы;
-
-\- `title`;
-
-\- наличие `title`;
-
-\- наличие `h1`;
-
-\- текст `h1`;
-
-\- наличие ссылок;
-
-\- количество ссылок;
-
-\- наличие кнопок;
-
-\- количество кнопок.
-
-
-
-Пример успешного результата:
-
-
+Вместо этого формируется:
 
 ```text
-
-UI status: PASS
-
-Title: QA Test
-
-Title exists: True
-
-H1 exists: True
-
-H1 text: Главный заголовок
-
-Links exist: True
-
-Links count: 1
-
-Buttons exist: True
-
-Buttons count: 1
-
+UI status: ERROR
 ```
 
+и основная часть проекта продолжает работу.
 
+---
 
+## Screenshots
 
+При некоторых Selenium-ошибках сервис может сохранить screenshot для последующего анализа.
 
-\## Проверка изображений
-
-
-
-Сервис анализирует элементы `<img>`.
-
-
-
-Определяется:
-
-
-
-\- общее количество изображений;
-
-\- количество изображений с `alt`;
-
-\- количество изображений без `alt`;
-
-\- список `src` найденных изображений без `alt`.
-
-
-
-Если найдено изображение без `alt`, UI status становится `WARN`.
-
-
-
-Пример:
-
-
+Файлы сохраняются в:
 
 ```text
-
-Images count: 3
-
-Images with alt: 2
-
-Images without alt: 1
-
+screenshots/
 ```
 
+---
 
+# Images
 
+Сервис определяет:
 
+- общее количество изображений;
+- количество изображений с `alt`;
+- количество изображений без `alt`;
+- URL изображений без `alt`.
 
-\## Audit Analyzer
+Важно:
 
+отсутствие `alt` не всегда автоматически считается подтверждённым дефектом.
 
+Назначение изображения может быть:
 
-`agent/analyzer.py` получает структурированный результат QA Audit Service и выделяет подтверждённые технические проблемы.
+- контентным;
+- декоративным.
 
+Поэтому такие случаи QA Agent может отправлять в manual checks.
 
+---
 
-Например:
+# Deterministic QA Agent
 
+Поверх результатов автоматического аудита работает отдельное детерминированное ядро QA Agent.
 
+Основные модули:
 
 ```text
-
-404
-
-→ confirmed issue
-
+agent/
+├── analyzer.py
+├── prioritizer.py
+├── manual_checks.py
+├── summary_generator.py
+├── bug_report_generator.py
+├── report_writer.py
+└── llm_analyzer.py
 ```
 
+---
 
+## Analyzer
 
-Потенциально спорные находки не добавляются в confirmed issues автоматически.
+`AuditAnalyzer` преобразует результаты аудита в подтверждённые проблемы.
 
-
-
-
-
-\## Issue Prioritizer
-
-
-
-`agent/prioritizer.py` назначает найденным проблемам приоритет:
-
-
+Пример подтверждённого дефекта:
 
 ```text
+16 внутренних ссылок возвращают HTTP 404
+```
 
+Такой результат имеет конкретное evidence и может считаться подтверждённым.
+
+---
+
+## Prioritizer
+
+`IssuePrioritizer` присваивает проблемам приоритеты:
+
+```text
 CRITICAL
-
 HIGH
-
 MEDIUM
-
 LOW
-
 ```
-
-
 
 Пример:
 
-
-
 ```text
-
 16 broken internal links
-
 → HIGH
-
 ```
 
+---
 
+## Manual Checks
 
-
-
-\## Manual Check Generator
-
-
-
-`agent/manual\_checks.py` формирует отдельный список ситуаций, которые требуют контекста требований или ручной QA-проверки.
-
-
+`ManualCheckGenerator` отделяет факты, которые требуют дополнительного контекста.
 
 Например:
 
-
-
 ```text
-
-Forms
-
-→ проверить необходимость required
-
-
-
-SEO/UI
-
-→ проверить требования к H1
-
-
-
-Accessibility
-
-→ проверить назначение изображения без alt
-
+H1 отсутствует
 ```
 
+не всегда автоматически является дефектом.
 
+Поэтому агент создаёт manual check:
 
+```text
+Проверить требования к H1 на конкретном типе страницы
+```
 
+То же правило применяется к:
 
-\## QA Summary Generator
+- `required` в формах;
+- изображениям без `alt`;
+- другим находкам, зависящим от требований.
 
+---
 
+# QA Summary
 
-`agent/summary\_generator.py` формирует краткое итоговое QA-заключение.
-
-
+`QASummaryGenerator` формирует общий результат.
 
 Пример:
 
-
-
 ```text
-
 Подтверждённых проблем: 1
-
 CRITICAL: 0
-
 HIGH: 1
-
 MEDIUM: 0
-
 LOW: 0
-
 Требуют ручной проверки: 3
-
-
-
-Итог: обнаружены серьёзные проблемы.
-
-Рекомендуется в первую очередь устранить HIGH-дефекты
-
-и затем выполнить повторный аудит.
-
 ```
 
+---
 
+# Bug Report Drafts
 
-
-
-\## Bug Report Generator
-
-
-
-`agent/bug\_report\_generator.py` автоматически создаёт черновики bug reports для подтверждённых проблем.
-
-
+`BugReportGenerator` автоматически создаёт черновики баг-репортов.
 
 Структура:
 
-
-
 ```text
-
 ID
-
 Title
-
 Category
-
 Priority
-
 Preconditions
-
 Steps
-
 Expected Result
-
 Actual Result
-
 Evidence
-
 ```
 
+Это именно draft, который QA Engineer может дополнительно проверить и отредактировать перед регистрацией дефекта.
 
+---
 
-Пример:
+# LLM Layer
 
+В проект добавлен отдельный LLM-слой поверх детерминированного QA Agent.
 
+Архитектура:
 
 ```text
-
-BUG-001 — Обнаружены битые внутренние ссылки
-
-
-
-Category: Links
-
-Priority: HIGH
-
+QA Audit Service
+↓
+Deterministic QA Agent
+↓
+Confirmed Issues
+Manual Checks
+QA Summary
+Bug Report Drafts
+↓
+Optional LLM Analysis
 ```
 
+---
 
+## Что делает LLM
 
+LLM может:
 
+- сформировать executive summary;
+- дать risk assessment;
+- предложить дополнительные manual checks;
+- предложить улучшения bug report drafts;
+- сформировать confidence notes.
 
-\## AI QA Agent Report
+---
 
+## Что LLM не делает
 
+LLM не может считаться источником фактических результатов аудита.
 
-После работы агента автоматически создаётся отдельный Markdown-файл:
-
-
-
-```text
-
-reports/agent\_YYYY-MM-DD\_HH-MM-SS.md
-
-```
-
-
-
-В него входят:
-
-
-
-\- QA Summary;
-
-\- Confirmed Issues;
-
-\- Priority;
-
-\- Evidence;
-
-\- Manual Checks;
-
-\- Bug Report Drafts.
-
-
-
-Evidence для битых ссылок сохраняется в читаемом формате:
-
-
-
-```text
-
-broken\_links\_count: 16
-
-broken\_links:
-
-&#x20; - 404 | https://example.com/page1
-
-&#x20; - 404 | https://example.com/page2
-
-```
-
-
-
-
-
-\## Автотесты
-
-
-
-Проект содержит автоматические тесты для:
-
-
-
-\- HTTP-проверок;
-
-\- классификации времени ответа;
-
-\- внутренних ссылок;
-
-\- нормализации URL;
-
-\- битых ссылок;
-
-\- HTML-форм;
-
-\- Selenium UI-проверок;
-
-\- `title`;
-
-\- `h1`;
-
-\- ссылок;
-
-\- кнопок;
-
-\- изображений;
-
-\- атрибутов `alt`.
-
-
-
-Текущий полный набор:
-
-
-
-```text
-
-37 passed
-
-```
-
-
-
-После интеграции AI QA Agent существующий regression suite продолжает проходить:
-
-
-
-```text
-
-37 passed in 23.50s
-
-```
-
-
-
-
-
-\## Unit и integration tests
-
-
-
-Тесты разделены на быстрые локальные проверки и сетевые integration tests.
-
-
-
-Для integration tests используется marker:
-
-
-
-```python
-
-@pytest.mark.integration
-
-```
-
-
-
-Маркер зарегистрирован в `pytest.ini`.
-
-
-
-Запуск только быстрых тестов:
-
-
-
-```bash
-
-pytest -v -m "not integration"
-
-```
-
-
-
-Результат:
-
-
-
-```text
-
-25 passed, 12 deselected
-
-```
-
-
-
-Запуск integration tests:
-
-
-
-```bash
-
-pytest -v -m integration
-
-```
-
-
-
-Результат:
-
-
-
-```text
-
-12 passed, 25 deselected
-
-```
-
-
-
-Запуск полного набора:
-
-
-
-```bash
-
-pytest -v
-
-```
-
-
-
-
-
-\## Оптимизация Selenium tests
-
-
-
-Selenium UI-тесты используют общий browser fixture из `tests/conftest.py`.
-
-
-
-Firefox запускается один раз на тестовую сессию и переиспользуется между UI-тестами.
-
-
-
-До оптимизации UI-тесты выполнялись примерно:
-
-
-
-```text
-
-84–98 секунд
-
-```
-
-
-
-После оптимизации:
-
-
-
-```text
-
-17 passed in 4.33s
-
-```
-
-
-
-Полный тестовый прогон после оптимизации:
-
-
-
-```text
-
-37 passed in 17.25s
-
-```
-
-
-
-
-
-\## Обработка Selenium ошибок
-
-
-
-Если Selenium не может загрузить страницу, сервис не завершает весь аудит аварийно.
-
-
-
-Обрабатываются:
-
-
-
-\- `TimeoutException`;
-
-\- `WebDriverException`;
-
-\- другие непредвиденные ошибки.
-
-
-
-При timeout возвращается структурированный результат:
-
-
-
-```text
-
-UI status: ERROR
-
-Title:
-
-Title exists: False
-
-H1 exists: False
-
-H1 text:
-
-Error: Page load timeout
-
-```
-
-
-
-
-
-\## Screenshots
-
-
-
-При UI-ошибке сервис автоматически сохраняет screenshot:
-
-
-
-```text
-
-screenshots/
-
-```
-
-
-
-Пример:
-
-
-
-```text
-
-screenshots/ui\_error\_2026-10-05\_00-33-46.png
-
-```
-
-
-
-Путь к screenshot добавляется в итоговый audit report.
-
-
-
-
-
-\## Отчёты
-
-
-
-После одного запуска создаются два типа Markdown-отчётов.
-
-
-
-\### QA Audit Service
-
-
-
-```text
-
-reports/audit\_YYYY-MM-DD\_HH-MM-SS.md
-
-```
-
-
-
-Содержит технические результаты автоматического аудита.
-
-
-
-\### AI QA Agent
-
-
-
-```text
-
-reports/agent\_YYYY-MM-DD\_HH-MM-SS.md
-
-```
-
-
-
-Содержит аналитический слой:
-
-
-
-\- confirmed issues;
-
-\- priorities;
-
-\- manual checks;
-
-\- QA summary;
-
-\- bug report drafts;
-
-\- evidence.
-
-
-
-
-
-\## Запуск
-
-
-
-Запуск проекта:
-
-
-
-```bash
-
-python main.py
-
-```
-
-
-
-Программа запросит:
-
-
-
-```text
-
-Введите URL сайта:
-
-```
-
-
+Подтверждёнными остаются только данные deterministic core.
 
 Например:
 
-
-
 ```text
-
-https://filsnab.ru
-
+Confirmed Issues
 ```
 
+формируются до вызова LLM и не заменяются AI-анализом.
 
+---
 
-После этого автоматически выполняется:
+# LLM Output
 
+Ожидаемая структура:
 
-
-```text
-
-QA Audit Service
-
-↓
-
-AI QA Agent
-
-↓
-
-два Markdown-отчёта
-
+```json
+{
+  "executive_summary": "string",
+  "risk_assessment": "string",
+  "additional_manual_checks": [
+    {
+      "title": "string",
+      "reason": "string"
+    }
+  ],
+  "bug_report_improvements": [
+    {
+      "issue": "string",
+      "suggestion": "string"
+    }
+  ],
+  "confidence_notes": [
+    "string"
+  ]
+}
 ```
 
+---
 
+# Работа без API-ключа
 
+LLM является опциональным.
 
-
-\## Установка
-
-
-
-Клонировать репозиторий:
-
-
-
-```bash
-
-git clone https://github.com/dimadvorokovsky/qa-audit-service.git
-
-```
-
-
-
-Перейти в каталог:
-
-
-
-```bash
-
-cd qa-audit-service
-
-```
-
-
-
-Создать virtual environment:
-
-
-
-```bash
-
-python -m venv venv
-
-```
-
-
-
-Windows PowerShell:
-
-
-
-```powershell
-
-.\\venv\\Scripts\\Activate.ps1
-
-```
-
-
-
-Если PowerShell блокирует скрипт:
-
-
-
-```powershell
-
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-
-```
-
-
-
-После этого:
-
-
-
-```powershell
-
-.\\venv\\Scripts\\Activate.ps1
-
-```
-
-
-
-Windows CMD:
-
-
-
-```bat
-
-venv\\Scripts\\activate
-
-```
-
-
-
-Установить зависимости:
-
-
-
-```bash
-
-pip install -r requirements.txt
-
-```
-
-
-
-
-
-\## Ручное тестирование
-
-
-
-Кроме автоматизированных проверок в репозитории находятся:
-
-
-
-\- `checklist.md` — универсальный QA checklist;
-
-\- `bug\_report\_template.md` — шаблон bug report;
-
-\- `audit\_report\_template.md` — шаблон итогового аудита.
-
-
-
-Checklist включает:
-
-
-
-\- доступность;
-
-\- навигацию;
-
-\- формы;
-
-\- кнопки;
-
-\- контент;
-
-\- responsive checks;
-
-\- пользовательские сценарии;
-
-\- negative scenarios;
-
-\- UX;
-
-\- финализацию QA-аудита.
-
-
-
-
-
-\## Архитектурные решения
-
-
-
-В проекте реализованы:
-
-
-
-\- разделение технических проверок по модулям;
-
-\- отдельный report writer;
-
-\- обработка ошибок отдельных модулей;
-
-\- structured results через dictionaries;
-
-\- URL normalization;
-
-\- reusable Selenium driver;
-
-\- pytest fixtures;
-
-\- unit/integration separation;
-
-\- автоматическое сохранение evidence при UI-ошибке;
-
-\- дедупликация одинаковых HTML-форм;
-
-\- группировка битых ссылок по URL-веткам;
-
-\- отдельный agent layer;
-
-\- разделение confirmed issues и manual checks;
-
-\- rule-based prioritization;
-
-\- автоматическая генерация QA Summary;
-
-\- автоматическая генерация bug report drafts;
-
-\- отдельный Markdown-report для агента.
-
-
-
-
-
-\## Real-world audit case: filsnab.ru
-
-
-
-QA Audit Service был протестирован на реальном веб-сайте:
-
-
-
-```text
-
-https://filsnab.ru/
-
-```
-
-
-
-\### Результат технического аудита
-
-
-
-```text
-
-Status Code: 200 OK
-
-Performance: PASS
-
-
-
-Проверено внутренних ссылок: 20
-
-Найдено битых ссылок: 16
-
-
-
-Уникальных форм: 1
-
-Экземпляров формы в DOM: 4
-
-
-
-Title exists: True
-
-H1 exists: False
-
-
-
-Images count: 15
-
-Images without alt: 1
-
-```
-
-
-
-Проблемные URL-ветки:
-
-
-
-```text
-
-/catalog/filtratsiya — 7 битых ссылок
-
-/catalog/filtratsiyaa — 7 битых ссылок
-
-/blogg — 1 битая ссылка
-
-/catalog/gidravlika — 1 битая ссылка
-
-```
-
-
-
-По результатам реального аудита QA Audit Service был доработан:
-
-
-
-\- добавлена дедупликация одинаковых форм;
-
-\- добавлен подсчёт экземпляров формы в DOM;
-
-\- добавлена группировка битых URL по проблемным веткам;
-
-\- улучшена структура Markdown-отчёта;
-
-\- улучшено отображение Evidence.
-
-
-
-Материалы:
-
-
-
-\[`examples/filsnab.ru/README.md`](examples/filsnab.ru/README.md)
-
-
-
-\[`examples/filsnab.ru/audit.md`](examples/filsnab.ru/audit.md)
-
-
-
-
-
-\## AI QA Agent — real-world case
-
-
-
-После технического аудита `filsnab.ru` результаты были переданы AI QA Agent Core.
-
-
+Если API не настроен, проект продолжает работать.
 
 Результат:
 
+```text
+LLM ANALYSIS
 
+Status: unavailable
+Reason: OPENAI_API_KEY or OPENAI_MODEL is not configured
+```
+
+При этом:
+
+- HTTP checks работают;
+- links checks работают;
+- forms checks работают;
+- Selenium checks работают;
+- deterministic QA Agent работает;
+- bug report drafts формируются;
+- Markdown-отчёт создаётся.
+
+---
+
+# Настройка LLM
+
+Для подключения OpenAI API используются переменные окружения.
+
+Создать локальный файл:
 
 ```text
+.env
+```
 
+Пример:
+
+```text
+OPENAI_API_KEY=your_api_key
+OPENAI_MODEL=your_model
+```
+
+`.env` не должен попадать в Git.
+
+Он исключён через `.gitignore`.
+
+API key нельзя хранить:
+
+- в Python-коде;
+- в README;
+- в GitHub;
+- в тестах.
+
+---
+
+# LLM Error Handling
+
+Реализованы fallback-сценарии.
+
+## API не настроен
+
+Результат:
+
+```text
+status: unavailable
+```
+
+---
+
+## API недоступен
+
+Результат:
+
+```text
+status: error
+```
+
+Основной аудит при этом не прекращается.
+
+---
+
+## LLM вернул невалидный JSON
+
+Результат:
+
+```text
+status: error
+reason: LLM returned invalid JSON
+```
+
+---
+
+# Тестирование LLM Layer
+
+LLM-тесты не выполняют реальные платные API-запросы.
+
+Используются mocks.
+
+Покрыты сценарии:
+
+- отсутствует API configuration;
+- успешный JSON response;
+- invalid JSON;
+- API exception.
+
+Файл:
+
+```text
+tests/test_llm_analyzer.py
+```
+
+---
+
+# Tests
+
+Запуск всей тестовой системы:
+
+```bash
+python -m pytest -q
+```
+
+Текущий результат:
+
+```text
+41 passed
+```
+
+В тестах проверяются как существующие функции QA Audit Service, так и новый LLM layer.
+
+---
+
+# Reports
+
+Сервис создаёт два типа Markdown-отчётов.
+
+## QA Audit Service
+
+```text
+reports/audit_YYYY-MM-DD_HH-MM-SS.md
+```
+
+---
+
+## QA Agent
+
+```text
+reports/agent_YYYY-MM-DD_HH-MM-SS.md
+```
+
+Agent report содержит:
+
+```text
+Deterministic QA Summary
+Confirmed Issues
+Manual Checks
+Bug Report Drafts
+LLM Analysis
+```
+
+---
+
+# Пример LLM fallback в отчёте
+
+```markdown
+## LLM Analysis
+
+**Status:** unavailable
+
+**Reason:** OPENAI_API_KEY or OPENAI_MODEL is not configured
+
+Детерминированные результаты аудита остаются доступными выше.
+```
+
+Таким образом отчёт остаётся полезным даже без подключения AI provider.
+
+---
+
+# Real-world Audit Case
+
+Для проверки сервиса использовался реальный сайт:
+
+```text
+https://filsnab.ru
+```
+
+Case study находится в:
+
+```text
+examples/filsnab.ru/
+```
+
+---
+
+## Результаты аудита filsnab.ru
+
+Основной URL:
+
+```text
+https://filsnab.ru
+```
+
+HTTP:
+
+```text
+200 OK
+```
+
+Performance:
+
+```text
+PASS
+```
+
+Во время проверки было найдено:
+
+```text
+20 внутренних ссылок
+16 broken links
+```
+
+Все найденные broken links возвращали:
+
+```text
+HTTP 404
+```
+
+---
+
+## Примеры найденных broken links
+
+```text
+https://filsnab.ru/blogg
+https://filsnab.ru/catalog/filtratsiya
+https://filsnab.ru/catalog/filtratsiya/gidravlicheskie-filtry
+https://filsnab.ru/catalog/filtratsiya/maslyanye-filtry
+https://filsnab.ru/catalog/filtratsiya/osushiteli-tormozov
+https://filsnab.ru/catalog/filtratsiya/salonnye-filtry
+https://filsnab.ru/catalog/filtratsiya/toplivnye-filtry
+https://filsnab.ru/catalog/filtratsiya/vozdushnye-filtry
+https://filsnab.ru/catalog/filtratsiyaa
+https://filsnab.ru/catalog/gidravlika
+```
+
+---
+
+## Forms
+
+Найдена одна уникальная форма:
+
+```text
+Method: GET
+Action: https://filsnab.ru/catalog/
+Fields: 2
+DOM instances: 4
+```
+
+Несмотря на наличие четырёх экземпляров в DOM, сервис определяет их как одну логически одинаковую форму.
+
+---
+
+## UI
+
+Selenium-проверка:
+
+```text
+Title exists: True
+H1 exists: False
+```
+
+Изображения:
+
+```text
+Images count: 15
+Images with alt: 14
+Images without alt: 1
+```
+
+Изображение без `alt`:
+
+```text
+https://partners.aspro.ru/upload/iblock/4bb/90_na_40_2_Montazhnaya_oblast_1.png
+```
+
+---
+
+# QA Agent Case Study
+
+Пример результата QA Agent находится в:
+
+```text
+examples/ai-qa-agent/
+```
+
+Для `filsnab.ru` deterministic core сформировал:
+
+```text
 Confirmed Issues: 1
-
-HIGH: 1
-
 Manual Checks: 3
-
 Bug Report Drafts: 1
-
 ```
 
+---
 
-
-\### Confirmed Issue
-
-
-
-Подтверждённая проблема:
-
-
+## Confirmed Issue
 
 ```text
-
-16 внутренних ссылок возвращают HTTP 404
-
-Priority: HIGH
-
+[HIGH] Broken internal links
 ```
 
-
-
-Для каждой ссылки сохраняется Evidence:
-
-
+Evidence:
 
 ```text
-
-404 | URL
-
+16 URLs
+HTTP 404
 ```
 
+---
 
+## Manual Checks
 
-\### Manual Checks
-
-
-
-Агент отдельно сформировал:
-
-
-
-1\. Проверить необходимость обязательных полей формы.
-
-2\. Проверить требования к H1 на конкретном типе страницы.
-
-3\. Проверить необходимость alt для найденного изображения.
-
-
-
-Эти находки не объявляются багами автоматически без дополнительного контекста.
-
-
-
-\### Bug Report Draft
-
-
-
-Для подтверждённой проблемы сформирован bug report draft с:
-
-
-
-\- Preconditions;
-
-\- Steps;
-
-\- Expected Result;
-
-\- Actual Result;
-
-\- Evidence.
-
-
-
-Материалы кейса:
-
-
-
-\[`examples/ai-qa-agent/README.md`](examples/ai-qa-agent/README.md)
-
-
-
-Готовый отчёт:
-
-
-
-\[`examples/ai-qa-agent/agent\_report.md`](examples/ai-qa-agent/agent\_report.md)
-
-
-
-
-
-\## Цель проекта
-
-
-
-Цель проекта — создать не просто набор учебных автотестов, а самостоятельный QA-инструмент, который способен:
-
-
+Сформированы проверки:
 
 ```text
-
-найти технические проблемы
-
-→ собрать evidence
-
-→ структурировать результаты
-
-→ отделить факты от спорных находок
-
-→ определить приоритет
-
-→ сформировать QA summary
-
-→ подготовить bug report drafts
-
+1. Проверить необходимость обязательных полей формы
+2. Проверить требования к H1
+3. Проверить необходимость alt для изображения
 ```
 
+Это демонстрирует принцип:
 
+```text
+автоматически найденный факт
+≠
+автоматически подтверждённый дефект
+```
 
-Проект демонстрирует практику работы с:
+---
 
+# Example Structure
 
+```text
+examples/
+├── filsnab.ru/
+│   ├── README.md
+│   └── audit.md
+│
+├── ai-qa-agent/
+│   ├── README.md
+│   └── agent_report.md
+│
+└── test-documentation/
+    ├── README.md
+    ├── checklist.md
+    ├── test_cases.md
+    └── bug_reports.md
+```
 
-\- manual QA;
+---
 
-\- web testing;
+# Test Documentation Examples
 
-\- API/HTTP;
+В репозитории также есть отдельные примеры тестовой документации:
 
-\- HTML parsing;
+```text
+examples/test-documentation/
+```
 
-\- Selenium;
+Включены:
 
-\- Python;
+- checklist;
+- test cases;
+- bug reports.
 
-\- pytest;
+Эти материалы используются как часть QA-портфолио.
 
-\- fixtures;
+---
 
-\- test architecture;
+# Project Structure
 
-\- error handling;
+Пример основной структуры проекта:
 
-\- QA reporting;
+```text
+qa-audit-service/
+│
+├── agent/
+│   ├── __init__.py
+│   ├── analyzer.py
+│   ├── prioritizer.py
+│   ├── manual_checks.py
+│   ├── summary_generator.py
+│   ├── bug_report_generator.py
+│   ├── report_writer.py
+│   └── llm_analyzer.py
+│
+├── checks/
+│   ├── http_checks.py
+│   ├── link_checks.py
+│   ├── forms_checks.py
+│   └── ui_checks.py
+│
+├── examples/
+│   ├── filsnab.ru/
+│   ├── ai-qa-agent/
+│   └── test-documentation/
+│
+├── reports/
+├── screenshots/
+├── tests/
+│   └── test_llm_analyzer.py
+│
+├── .gitignore
+├── main.py
+├── report_writer.py
+├── requirements.txt
+└── README.md
+```
 
-\- automated QA analysis;
+---
 
-\- Git/GitHub.
+# Installation
 
+Клонировать репозиторий:
 
+```bash
+git clone https://github.com/dimadvorokovsky/qa-audit-service.git
+```
 
+Перейти в папку:
 
+```bash
+cd qa-audit-service
+```
 
-\## Roadmap
+Создать виртуальное окружение:
 
+```bash
+python -m venv venv
+```
 
+Windows:
 
-Дальнейшее развитие проекта:
+```bash
+venv\Scripts\activate
+```
 
+Установить зависимости:
 
+```bash
+python -m pip install -r requirements.txt
+```
 
-\- LLM-слой для дополнительного анализа результатов;
+---
 
-\- генерация дополнительных exploratory/manual test ideas;
+# Run
 
-\- автоматическое создание bug reports в issue tracker;
+Запустить:
 
-\- GitHub Actions;
+```bash
+python main.py
+```
 
-\- Allure report generation;
+Сервис запросит:
 
-\- HTML reports;
+```text
+Введите URL сайта:
+```
 
-\- PDF reports;
+Пример:
 
-\- FastAPI interface;
+```text
+https://filsnab.ru
+```
 
-\- история аудитов;
+---
 
-\- database;
+# Technologies
 
-\- Docker;
+Используются:
 
-\- параллельная проверка ссылок;
+```text
+Python
+Requests
+BeautifulSoup
+Selenium
+Firefox
+pytest
+OpenAI Python SDK
+python-dotenv
+Markdown
+Git
+GitHub
+```
 
-\- дополнительные accessibility checks;
+---
 
-\- CI/CD;
+# Reliability
 
-\- запуск аудитов для реальных пользователей и клиентов.
+Проект разработан так, чтобы сбой отдельного дополнительного компонента по возможности не останавливал весь аудит.
 
+Например:
 
+```text
+Selenium startup error
+↓
+UI status: ERROR
+↓
+остальные результаты продолжают обрабатываться
+```
 
+Аналогично:
 
+```text
+LLM unavailable
+↓
+Status: unavailable
+↓
+deterministic report remains available
+```
 
-\## Автор
+---
 
+# Security
 
+API credentials не хранятся в репозитории.
 
-\*\*Dmitry Dvorokovsky\*\*
+`.gitignore` исключает:
 
+```text
+.env
+```
 
+Сгенерированные audit reports также не должны автоматически попадать в Git:
+
+```text
+reports/audit_*.md
+reports/agent_*.md
+```
+
+В Git сохраняются только специально подготовленные portfolio examples.
+
+---
+
+# Current Limitations
+
+Текущая версия имеет намеренно ограниченный scope.
+
+Сервис не заменяет полноценное ручное тестирование.
+
+Автоматические результаты необходимо интерпретировать с учётом:
+
+- требований;
+- бизнес-логики;
+- назначения страницы;
+- пользовательских сценариев;
+- окружения.
+
+LLM recommendations также являются вспомогательными и не заменяют подтверждённое evidence.
+
+---
+
+# Development Roadmap
+
+Реализовано:
+
+- HTTP audit;
+- internal links audit;
+- broken links detection;
+- URL normalization;
+- forms analysis;
+- form deduplication;
+- Selenium UI checks;
+- H1/title checks;
+- image alt analysis;
+- screenshots on UI errors;
+- Markdown reports;
+- deterministic QA Agent;
+- issue prioritization;
+- manual checks;
+- QA summary;
+- bug report drafts;
+- LLM integration layer;
+- LLM fallback;
+- mocked LLM unit tests;
+- real-world case study.
+
+Возможное дальнейшее развитие:
+
+- подключение реального LLM provider для production use;
+- расширение API checks;
+- JavaScript console error analysis;
+- Network request analysis;
+- configurable audit rules;
+- HTML report;
+- CLI arguments;
+- CI integration;
+- более глубокие accessibility checks.
+
+---
+
+# Author
+
+Dmitry Dvorokovsky
 
 Junior QA Engineer
 
-
-
 GitHub:
 
-
-
 https://github.com/dimadvorokovsky
-
