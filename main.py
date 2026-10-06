@@ -10,6 +10,7 @@ from agent.manual_checks import ManualCheckGenerator
 from agent.summary_generator import QASummaryGenerator
 from agent.bug_report_generator import BugReportGenerator
 from agent.report_writer import AgentReportWriter
+from agent.llm_analyzer import LLMAnalyzer
 
 
 def build_agent_input(
@@ -20,7 +21,7 @@ def build_agent_input(
 ):
     """
     Преобразует результаты QA Audit Service
-    в единую структуру для AI QA Agent.
+    в единую структуру для QA Agent.
     """
 
     broken_links = [
@@ -76,8 +77,8 @@ def build_agent_input(
 
 def run_qa_agent(audit_result):
     """
-    Запускает AI QA Agent поверх результатов
-    автоматического аудита.
+    Запускает детерминированное ядро QA Agent
+    поверх результатов автоматического аудита.
     """
 
     analyzer = AuditAnalyzer()
@@ -113,9 +114,28 @@ def run_qa_agent(audit_result):
     }
 
 
+def run_llm_analysis(
+    url,
+    agent_result,
+):
+    """
+    Запускает дополнительный LLM-анализ.
+
+    LLM не изменяет подтверждённые результаты
+    детерминированного ядра.
+    """
+
+    llm_analyzer = LLMAnalyzer()
+
+    return llm_analyzer.analyze(
+        url=url,
+        agent_result=agent_result,
+    )
+
+
 def print_agent_result(agent_result):
     """
-    Выводит результат работы AI QA Agent
+    Выводит результат детерминированного QA Agent
     в консоль.
     """
 
@@ -125,7 +145,7 @@ def print_agent_result(agent_result):
     bug_reports = agent_result["bug_reports"]
 
     print("\n" + "=" * 60)
-    print("AI QA AGENT")
+    print("QA AGENT — DETERMINISTIC CORE")
     print("=" * 60)
 
     print("\n=== CONFIRMED ISSUES ===")
@@ -229,13 +249,121 @@ def print_agent_result(agent_result):
         print("-" * 60)
 
 
+def print_llm_result(llm_result):
+    """
+    Выводит дополнительный LLM-анализ отдельно
+    от детерминированных результатов.
+    """
+
+    print("\n" + "=" * 60)
+    print("LLM ANALYSIS")
+    print("=" * 60)
+
+    status_value = llm_result.get(
+        "status"
+    )
+
+    print(
+        f"\nStatus: {status_value}"
+    )
+
+    if status_value != "success":
+        print(
+            "Reason: "
+            f"{llm_result.get('reason')}"
+        )
+        return
+
+    analysis = llm_result["analysis"]
+
+    print("\n=== EXECUTIVE SUMMARY ===")
+    print(
+        analysis.get(
+            "executive_summary",
+            "",
+        )
+    )
+
+    print("\n=== RISK ASSESSMENT ===")
+    print(
+        analysis.get(
+            "risk_assessment",
+            "",
+        )
+    )
+
+    print("\n=== ADDITIONAL MANUAL CHECKS ===")
+
+    additional_checks = analysis.get(
+        "additional_manual_checks",
+        [],
+    )
+
+    if not additional_checks:
+        print("Дополнительных проверок нет.")
+
+    for number, check in enumerate(
+        additional_checks,
+        start=1,
+    ):
+        print(
+            f"{number}. {check.get('title', '')}"
+        )
+        print(
+            f"   Reason: "
+            f"{check.get('reason', '')}"
+        )
+
+    print("\n=== BUG REPORT IMPROVEMENTS ===")
+
+    improvements = analysis.get(
+        "bug_report_improvements",
+        [],
+    )
+
+    if not improvements:
+        print("Предложений нет.")
+
+    for number, improvement in enumerate(
+        improvements,
+        start=1,
+    ):
+        print(
+            f"{number}. "
+            f"{improvement.get('issue', '')}"
+        )
+        print(
+            f"   Suggestion: "
+            f"{improvement.get('suggestion', '')}"
+        )
+
+    print("\n=== CONFIDENCE NOTES ===")
+
+    confidence_notes = analysis.get(
+        "confidence_notes",
+        [],
+    )
+
+    if not confidence_notes:
+        print("Комментариев нет.")
+
+    for note in confidence_notes:
+        print(f"- {note}")
+
+
 def main():
-    url = input("Введите URL сайта: ")
+    url = input(
+        "Введите URL сайта: "
+    )
 
     result = check_url(url)
 
-    print("\nРезультат основной проверки:")
-    print(f"URL: {result['url']}")
+    print(
+        "\nРезультат основной проверки:"
+    )
+    print(
+        f"URL: {result['url']}"
+    )
     print(
         f"Status code: "
         f"{result['status_code']}"
@@ -254,20 +382,26 @@ def main():
     )
 
     if "error" in result:
-        print(f"Error: {result['error']}")
+        print(
+            f"Error: {result['error']}"
+        )
         return
 
-    print("\nПроверка ссылок:")
+    print(
+        "\nПроверка ссылок:"
+    )
 
     links = check_page_links(url)
 
     if not links:
-        print("Ссылки не найдены.")
+        print(
+            "Ссылки не найдены."
+        )
     else:
         broken_count = 0
 
         for link in links:
-            status = link["status_code"]
+            status_code = link["status_code"]
             is_broken = link["is_broken"]
 
             if is_broken:
@@ -278,11 +412,13 @@ def main():
 
             print(
                 f"{result_label} | "
-                f"{status} | "
+                f"{status_code} | "
                 f"{link['url']}"
             )
 
-        print("\nИтог по ссылкам:")
+        print(
+            "\nИтог по ссылкам:"
+        )
         print(
             f"Всего ссылок: "
             f"{len(links)}"
@@ -292,12 +428,16 @@ def main():
             f"{broken_count}"
         )
 
-    print("\nПроверка форм:")
+    print(
+        "\nПроверка форм:"
+    )
 
     forms = get_forms(url)
 
     if not forms:
-        print("Формы не найдены.")
+        print(
+            "Формы не найдены."
+        )
     else:
         print(
             f"Найдено форм: "
@@ -326,7 +466,10 @@ def main():
                 f"{len(form['submit_buttons'])}"
             )
 
-            if form.get("instances", 1) > 1:
+            if form.get(
+                "instances",
+                1,
+            ) > 1:
                 print(
                     f"Экземпляров в DOM: "
                     f"{form['instances']}"
@@ -341,7 +484,9 @@ def main():
                     f"{field['required']}"
                 )
 
-    print("\nUI-проверка через Selenium:")
+    print(
+        "\nUI-проверка через Selenium:"
+    )
 
     ui_result = check_page_title(url)
 
@@ -382,7 +527,9 @@ def main():
         f"{ui_result['buttons_count']}"
     )
 
-    print("\nПроверка изображений:")
+    print(
+        "\nПроверка изображений:"
+    )
 
     print(
         f"Images count: "
@@ -398,14 +545,18 @@ def main():
     )
 
     if ui_result["images_without_alt"]:
-        print("Изображения без alt:")
+        print(
+            "Изображения без alt:"
+        )
 
         for image_src in (
             ui_result["images_without_alt"]
         ):
-            print(f"- {image_src}")
+            print(
+                f"- {image_src}"
+            )
 
-    if "error" in ui_result:
+    if ui_result.get("error"):
         print(
             f"UI error: "
             f"{ui_result['error']}"
@@ -425,8 +576,12 @@ def main():
         ui_result=ui_result,
     )
 
-    print("\nОтчёт QA Audit Service сохранён:")
-    print(report_path)
+    print(
+        "\nОтчёт QA Audit Service сохранён:"
+    )
+    print(
+        report_path
+    )
 
     audit_result = build_agent_input(
         main_result=result,
@@ -443,15 +598,29 @@ def main():
         agent_result
     )
 
+    llm_result = run_llm_analysis(
+        url=url,
+        agent_result=agent_result,
+    )
+
+    print_llm_result(
+        llm_result
+    )
+
     agent_report_writer = AgentReportWriter()
 
     agent_report_path = agent_report_writer.save(
         url=url,
         agent_result=agent_result,
+        llm_result=llm_result,
     )
 
-    print("\nОтчёт AI QA Agent сохранён:")
-    print(agent_report_path)
+    print(
+        "\nОтчёт QA Agent сохранён:"
+    )
+    print(
+        agent_report_path
+    )
 
 
 if __name__ == "__main__":

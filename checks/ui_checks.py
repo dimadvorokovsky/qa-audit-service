@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.common.exceptions import (
     NoSuchElementException,
     TimeoutException,
-    WebDriverException
+    WebDriverException,
 )
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -29,13 +29,13 @@ def get_h1_data(driver):
 
         return {
             "h1_exists": True,
-            "h1_text": h1.text.strip()
+            "h1_text": h1.text.strip(),
         }
 
     except NoSuchElementException:
         return {
             "h1_exists": False,
-            "h1_text": ""
+            "h1_text": "",
         }
 
 
@@ -47,7 +47,7 @@ def get_interactive_elements_data(driver):
         "links_count": len(links),
         "buttons_count": len(buttons),
         "links_exist": len(links) > 0,
-        "buttons_exist": len(buttons) > 0
+        "buttons_exist": len(buttons) > 0,
     }
 
 
@@ -65,13 +65,17 @@ def get_images_data(driver):
 
     images_count = len(images)
     images_without_alt_count = len(images_without_alt)
-    images_with_alt_count = images_count - images_without_alt_count
+    images_with_alt_count = (
+        images_count - images_without_alt_count
+    )
 
     return {
         "images_count": images_count,
         "images_with_alt_count": images_with_alt_count,
-        "images_without_alt_count": images_without_alt_count,
-        "images_without_alt": images_without_alt
+        "images_without_alt_count": (
+            images_without_alt_count
+        ),
+        "images_without_alt": images_without_alt,
     }
 
 
@@ -80,7 +84,10 @@ def create_firefox_driver():
     options.add_argument("-headless")
     options.page_load_strategy = "eager"
 
-    driver = webdriver.Firefox(options=options)
+    driver = webdriver.Firefox(
+        options=options
+    )
+
     driver.set_page_load_timeout(30)
 
     return driver
@@ -89,7 +96,7 @@ def create_firefox_driver():
 def get_error_result(
     url,
     error_message,
-    screenshot_path=None
+    screenshot_path=None,
 ):
     return {
         "url": url,
@@ -107,97 +114,166 @@ def get_error_result(
         "images_without_alt": [],
         "ui_status": "ERROR",
         "error": error_message,
-        "screenshot": screenshot_path
+        "screenshot": screenshot_path,
     }
 
 
-def check_page_title(url, driver=None):
+def check_page_title(
+    url,
+    driver=None,
+):
     own_driver = driver is None
 
-    if own_driver:
-        driver = create_firefox_driver()
-
     try:
+        if own_driver:
+            driver = create_firefox_driver()
+
         try:
             driver.get(url)
 
         except TimeoutException:
             screenshot_path = None
 
-            try:
-                screenshot_path = save_screenshot(driver)
-            except Exception:
-                pass
+            if driver is not None:
+                try:
+                    screenshot_path = save_screenshot(
+                        driver
+                    )
+                except Exception:
+                    pass
 
             return get_error_result(
                 url=url,
                 error_message="Page load timeout",
-                screenshot_path=screenshot_path
+                screenshot_path=screenshot_path,
             )
 
         title = driver.title.strip()
-        h1_data = get_h1_data(driver)
-        interactive_data = get_interactive_elements_data(driver)
-        images_data = get_images_data(driver)
+
+        h1_data = get_h1_data(
+            driver
+        )
+
+        interactive_data = (
+            get_interactive_elements_data(
+                driver
+            )
+        )
+
+        images_data = get_images_data(
+            driver
+        )
 
         ui_status = "PASS"
 
-        if not title or not h1_data["h1_exists"]:
+        if (
+            not title
+            or not h1_data["h1_exists"]
+        ):
             ui_status = "WARN"
 
-        if images_data["images_without_alt_count"] > 0:
+        if (
+            images_data[
+                "images_without_alt_count"
+            ]
+            > 0
+        ):
             ui_status = "WARN"
 
         return {
             "url": url,
             "title": title,
             "title_exists": bool(title),
-            "h1_exists": h1_data["h1_exists"],
-            "h1_text": h1_data["h1_text"],
-            "links_count": interactive_data["links_count"],
-            "buttons_count": interactive_data["buttons_count"],
-            "links_exist": interactive_data["links_exist"],
-            "buttons_exist": interactive_data["buttons_exist"],
-            "images_count": images_data["images_count"],
-            "images_with_alt_count": images_data["images_with_alt_count"],
-            "images_without_alt_count": images_data[
-                "images_without_alt_count"
-            ],
-            "images_without_alt": images_data["images_without_alt"],
+            "h1_exists": (
+                h1_data["h1_exists"]
+            ),
+            "h1_text": (
+                h1_data["h1_text"]
+            ),
+            "links_count": (
+                interactive_data[
+                    "links_count"
+                ]
+            ),
+            "buttons_count": (
+                interactive_data[
+                    "buttons_count"
+                ]
+            ),
+            "links_exist": (
+                interactive_data[
+                    "links_exist"
+                ]
+            ),
+            "buttons_exist": (
+                interactive_data[
+                    "buttons_exist"
+                ]
+            ),
+            "images_count": (
+                images_data[
+                    "images_count"
+                ]
+            ),
+            "images_with_alt_count": (
+                images_data[
+                    "images_with_alt_count"
+                ]
+            ),
+            "images_without_alt_count": (
+                images_data[
+                    "images_without_alt_count"
+                ]
+            ),
+            "images_without_alt": (
+                images_data[
+                    "images_without_alt"
+                ]
+            ),
             "ui_status": ui_status,
-            "screenshot": None
+            "error": None,
+            "screenshot": None,
         }
 
     except WebDriverException as error:
         screenshot_path = None
 
-        try:
-            screenshot_path = save_screenshot(driver)
-        except Exception:
-            pass
+        if driver is not None:
+            try:
+                screenshot_path = save_screenshot(
+                    driver
+                )
+            except Exception:
+                pass
 
         return get_error_result(
             url=url,
             error_message=str(error),
-            screenshot_path=screenshot_path
+            screenshot_path=screenshot_path,
         )
 
     except Exception as error:
         screenshot_path = None
 
-        try:
-            screenshot_path = save_screenshot(driver)
-        except Exception:
-            pass
+        if driver is not None:
+            try:
+                screenshot_path = save_screenshot(
+                    driver
+                )
+            except Exception:
+                pass
 
         return get_error_result(
             url=url,
             error_message=str(error),
-            screenshot_path=screenshot_path
+            screenshot_path=screenshot_path,
         )
 
     finally:
-        if own_driver:
+        if (
+            own_driver
+            and driver is not None
+        ):
             try:
                 driver.quit()
             except Exception:
